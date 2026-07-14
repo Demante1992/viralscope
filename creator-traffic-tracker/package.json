@@ -1,0 +1,17 @@
+{
+  "name": "viralscope-creator-command-center",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ViralScope creator analytics prototype with Netlify Functions.",
+  "scripts": {
+    "start": "node server.js",
+    "netlify:dev": "netlify dev",
+    "check": "node --check server.js && node --check app.js && node --check landing.js && node --check netlify/functions/_shared/api-core.cjs && node --check netlify/functions/api.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^9.1.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.38.1"
+  }
+}

@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ViralScope Creator Command Center</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <a class="brand" href="#" aria-label="PulsePilot home">
+          <span class="brand-mark">V</span>
+          <span>
+            <strong>ViralScope</strong>
+            <small>Creator command center</small>
+          </span>
+        </a>
+
+        <nav class="nav-list">
+          <button class="nav-item active" type="button" data-view="overview" data-accent="teal">
+            <span class="nav-icon" data-nav-icon="overview"></span><span>Overview</span>
+          </button>
+          <button class="nav-item" type="button" data-view="channels" data-accent="blue">
+            <span class="nav-icon" data-nav-icon="channels"></span><span>Channels</span>
+          </button>
+          <button class="nav-item" type="button" data-view="discovery" data-accent="pink">
+            <span class="nav-icon" data-nav-icon="discovery"></span><span>Discovery</span>
+          </button>
+          <button class="nav-item" type="button" data-view="campaigns" data-accent="coral">
+            <span class="nav-icon" data-nav-icon="campaigns"></span><span>Campaigns</span>
+          </button>
+          <button class="nav-item" type="button" data-view="coach" data-accent="amber">
+            <span class="nav-icon" data-nav-icon="coach"></span><span>AI Coach</span>
+          </button>
+          <button class="nav-item" type="button" data-view="revenue" data-accent="green">
+            <span class="nav-icon" data-nav-icon="revenue"></span><span>Revenue</span>
+          </button>
+          <button class="nav-item" type="button" data-view="calendar" data-accent="violet">
+            <span class="nav-icon" data-nav-icon="calendar"></span><span>Calendar</span>
+          </button>
+          <button class="nav-item" type="button" data-view="audience" data-accent="mint">
+            <span class="nav-icon" data-nav-icon="audience"></span><span>Audience</span>
+          </button>
+          <button class="nav-item" type="button" data-view="alerts" data-accent="red">
+            <span class="nav-icon" data-nav-icon="alerts"></span><span>Alerts</span>
+          </button>
+          <button class="nav-item" type="button" data-view="reports" data-accent="gold">
+            <span class="nav-icon" data-nav-icon="reports"></span><span>Reports</span>
+          </button>
+          <button class="nav-item" type="button" data-view="launch" data-accent="orange">
+            <span class="nav-icon" data-nav-icon="launch"></span><span>Launch</span>
+          </button>
+          <button class="nav-item" type="button" data-view="settings" data-accent="slate">
+            <span class="nav-icon" data-nav-icon="settings"></span><span>Settings</span>
+          </button>
+        </nav>
+
+        <section class="sidebar-panel">
+          <p class="eyebrow">Tracking health</p>
+          <div class="health-meter" aria-hidden="true"><span></span></div>
+          <strong>94% signal quality</strong>
+          <small>8 data sources updated in the last 9 minutes.</small>
+        </section>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Live creator analytics</p>
+            <h1>Traffic intelligence for every platform you publish on.</h1>
+          </div>
+          <div class="topbar-actions">
+            <label class="search-box">
+              <span>⌕</span>
+              <input id="searchInput" type="search" placeholder="Search inside ViralScope" autocomplete="off" />
+              <div class="global-search-results" id="globalSearchResults"></div>
+            </label>
+            <button class="icon-button" type="button" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">◐</button>
+            <button class="secondary-button account-button" type="button" id="accountButton">Log in</button>
+            <button class="primary-button" type="button" id="openConnect">+ Connect source</button>
+          </div>
+        </header>
+
+        <section class="command-band" data-view-section="overview">
+          <div class="command-copy">
+            <p class="eyebrow">Unified traffic cockpit</p>
+            <h2>Connect your channels or track any URL, then see what actually moves attention.</h2>
+            <p>
+              Pull together views, likes, shares, comments, retention, click-throughs, affiliate links,
+              watch time, audience overlap, and revenue signals in one creator-first workspace.
+            </p>
+            <div class="hero-actions">
+              <button class="primary-button" type="button" id="openUrlTracker">Track a website URL</button>
+              <button class="secondary-button" type="button" id="simulateRefresh">Refresh metrics</button>
+            </div>
+          </div>
+          <div class="command-visual" aria-label="Abstract analytics command center">
+            <img src="assets/analytics-command-center.png" alt="" />
+            <div class="visual-stat stat-one">
+              <strong id="heroViews">14.8M</strong>
+              <span>30-day views</span>
+            </div>
+            <div class="visual-stat stat-two">
+              <strong>+28%</strong>
+              <span>share velocity</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="quick-grid" aria-label="Key metrics" data-view-section="overview">
+          <article class="metric-card">
+            <span class="metric-icon teal">▶</span>
+            <div>
+              <p>Total views</p>
+              <strong id="totalViews">14.8M</strong>
+              <small class="positive">+18.4% vs previous 30 days</small>
+            </div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon coral">♥</span>
+            <div>
+              <p>Engagements</p>
+              <strong id="engagements">928K</strong>
+              <small class="positive">+11.7% across connected channels</small>
+            </div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon amber">↗</span>
+            <div>
+              <p>Site clicks</p>
+              <strong id="siteClicks">184K</strong>
+              <small class="warning">TikTok bio link is pacing hot</small>
+            </div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon ink">$</span>
+            <div>
+              <p>Attributed value</p>
+              <strong id="revenue">$42.6K</strong>
+              <small class="positive">+7.9% from sponsor and affiliate paths</small>
+            </div>
+          </article>
+        </section>
+
+        <section class="live-ops-panel" data-view-section="overview alerts">
+          <div class="live-ops-header">
+            <div>
+              <p class="eyebrow">Live operations</p>
+              <h3>Signal stream</h3>
+            </div>
+            <span class="live-status"><i></i><span id="liveStatusText">Monitoring 8 sources</span></span>
+          </div>
+          <div class="live-ops-grid">
+            <div class="sync-pulse-card">
+              <span class="sync-ring"></span>
+              <div>
+                <strong id="syncStateTitle">All systems watching</strong>
+                <p id="syncStateBody">YouTube, TikTok, Instagram, Twitch, and URL traffic are being monitored for spikes.</p>
+              </div>
+            </div>
+            <div class="activity-feed" id="activityFeed"></div>
+          </div>
+        </section>
+
+        <section class="onboarding-strip" data-view-section="overview">
+          <div>
+            <p class="eyebrow">Launch checklist</p>
+            <h3>Get ViralScope ready for a real creator account</h3>
+          </div>
+          <button class="primary-button" type="button" id="startOnboarding">Start setup</button>
+          <div class="onboarding-steps" id="onboardingSteps"></div>
+        </section>
+
+        <section class="workspace-grid">
+          <article class="panel chart-panel" data-view-section="overview">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Performance timeline</p>
+                <h3>Traffic by platform</h3>
+              </div>
+              <div class="chart-actions">
+                <div class="segmented" role="group" aria-label="Chart mode">
+                  <button type="button" class="active" data-chart-mode="line">Line</button>
+                  <button type="button" data-chart-mode="bars">Bars</button>
+                </div>
+                <div class="segmented" role="group" aria-label="Date range">
+                  <button type="button" class="active" data-range="7">7D</button>
+                  <button type="button" data-range="30">30D</button>
+                  <button type="button" data-range="90">90D</button>
+                </div>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="trafficChart" width="980" height="390" aria-label="Interactive traffic chart"></canvas>
+              <div class="chart-tooltip" id="chartTooltip" role="status" aria-live="polite"></div>
+            </div>
+            <div class="legend" id="chartLegend"></div>
+          </article>
+
+          <article class="panel os-panel" data-view-section="overview reports">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Creator OS</p>
+                <h3>Operating system score</h3>
+              </div>
+              <button class="text-button" type="button" id="runOsAudit">Run audit <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="os-score-layout">
+              <div class="os-orbit">
+                <strong id="osScore">82</strong>
+                <span>overall</span>
+              </div>
+              <div class="os-score-grid" id="creatorOsGrid"></div>
+            </div>
+          </article>
+
+          <article class="panel connect-panel" data-view-section="overview channels">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Sources</p>
+                <h3>Connected channels</h3>
+              </div>
+              <button class="text-button" type="button" id="openConnectSmall">Add</button>
+            </div>
+            <div class="channel-list" id="channelList"></div>
+          </article>
+
+          <article class="panel channel-preview-panel" data-view-section="channels">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Platform preview</p>
+                <h3>Channel and page snapshots</h3>
+              </div>
+              <div class="preview-switcher" id="previewSwitcher" aria-label="Choose platform preview"></div>
+            </div>
+            <div class="profile-preview" id="profilePreview"></div>
+          </article>
+
+          <article class="panel discovery-panel" data-view-section="discovery">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Creator discovery</p>
+                <h3>Find channels and pages across platforms</h3>
+              </div>
+              <div class="tool-actions">
+                <select id="discoveryPlatform" aria-label="Discovery platform filter">
+                  <option value="All">All platforms</option>
+                  <option value="YouTube">YouTube</option>
+                  <option value="Instagram">Instagram</option>
+                  <option value="TikTok">TikTok</option>
+                  <option value="Twitch">Twitch</option>
+                  <option value="Kick">Kick</option>
+                  <option value="Facebook">Facebook</option>
+                </select>
+                <button class="text-button" type="button" id="runDiscovery">Search</button>
+              </div>
+            </div>
+            <div class="discovery-search-row">
+              <label class="mini-field">
+                <span>Keyword, niche, or creator</span>
+                <input id="discoveryQuery" type="text" value="dinner channels" />
+              </label>
+              <label class="mini-field">
+                <span>Minimum followers</span>
+                <input id="discoveryMinFollowers" type="text" value="50K" />
+              </label>
+              <label class="mini-field">
+                <span>Sort by</span>
+                <input id="discoverySort" type="text" value="Outlier score" />
+              </label>
+            </div>
+            <div class="discovery-results" id="discoveryResults"></div>
+          </article>
+
+          <article class="panel integrations-panel" data-view-section="channels">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Integration hub</p>
+                <h3>Account and data connectors</h3>
+              </div>
+              <button class="text-button" type="button" id="syncIntegrations">Sync all</button>
+            </div>
+            <div class="integration-grid" id="integrationGrid"></div>
+          </article>
+
+          <article class="panel content-panel" data-view-section="overview campaigns">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Content intelligence</p>
+                <h3>Top movers</h3>
+              </div>
+              <select id="platformFilter" aria-label="Filter content by platform">
+                <option value="All">All platforms</option>
+                <option value="YouTube">YouTube</option>
+                <option value="Instagram">Instagram</option>
+                <option value="TikTok">TikTok</option>
+                <option value="Twitch">Twitch</option>
+                <option value="Kick">Kick</option>
+                <option value="Facebook">Facebook</option>
+                <option value="Website">Website</option>
+              </select>
+            </div>
+            <div class="content-list" id="contentList"></div>
+          </article>
+
+          <article class="panel coach-panel" data-view-section="coach">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">PulsePilot AI</p>
+                <h3>Channel growth coach</h3>
+              </div>
+              <div class="segmented coach-mode" role="group" aria-label="AI coach depth">
+                <button type="button" class="active" data-coach-mode="fast">Fast</button>
+                <button type="button" data-coach-mode="deep">Deep <span class="pro-chip">Pro</span></button>
+              </div>
+            </div>
+            <div class="coach-grid">
+              <section class="ai-console" aria-label="AI coach conversation">
+                <div class="ai-message">
+                  <span class="ai-avatar">AI</span>
+                  <div>
+                    <strong>Channel audit ready</strong>
+                    <p id="coachSummary">
+                      Your short-form traffic is strong, but YouTube packaging is underperforming against
+                      the same topics. The next win is tighter titles, cleaner thumbnails, and one stream-to-video loop.
+                    </p>
+                  </div>
+                </div>
+                <div class="coach-prompts" id="coachPrompts"></div>
+                <label class="coach-input">
+                  <span>Ask the coach</span>
+                  <textarea id="coachQuestion" rows="3" placeholder="Review my latest video and tell me what to change next."></textarea>
+                </label>
+                <button class="primary-button" type="button" id="runCoach">Analyze channel</button>
+                <div class="ai-action-row">
+                  <button class="text-button" type="button" data-ai-action="title">Rewrite title</button>
+                  <button class="text-button" type="button" data-ai-action="calendar">Create plan <span class="pro-chip">Pro</span></button>
+                  <button class="text-button" type="button" data-ai-action="competitors">Find competitors <span class="pro-chip">Pro</span></button>
+                  <button class="text-button" type="button" data-ai-action="report">Draft report <span class="pro-chip">Pro</span></button>
+                </div>
+              </section>
+              <section class="coach-output" aria-label="AI growth recommendations">
+                <div class="score-ring">
+                  <span>82</span>
+                  <small>growth score</small>
+                </div>
+                <div class="recommendation-list" id="recommendationList"></div>
+              </section>
+            </div>
+          </article>
+
+          <article class="panel command-panel" data-view-section="coach">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">AI command center</p>
+                <h3>Ask ViralScope to do the work</h3>
+              </div>
+              <button class="text-button" type="button" id="runCommand">Run command <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="command-center-grid">
+              <label class="coach-input command-input">
+                <span>Command</span>
+                <textarea id="commandInput" rows="4">Audit my latest uploads, find one outlier idea, create a title test, and add the best plan to my calendar.</textarea>
+              </label>
+              <div class="agent-steps" id="agentSteps"></div>
+            </div>
+          </article>
+
+          <article class="panel lab-panel" data-view-section="campaigns coach">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Growth lab</p>
+                <h3>Best-in-class creator growth tools</h3>
+              </div>
+              <button class="text-button" type="button" id="generateIdeas">Generate ideas <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="lab-grid" id="labGrid"></div>
+          </article>
+
+          <article class="panel outlier-panel" data-view-section="campaigns">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Trend radar</p>
+                <h3>Outlier video discovery</h3>
+              </div>
+              <div class="tool-actions">
+                <select id="nicheFilter" aria-label="Filter outliers by niche">
+                  <option value="Creator Education">Creator Education</option>
+                  <option value="Gaming">Gaming</option>
+                  <option value="Lifestyle">Lifestyle</option>
+                  <option value="Tech">Tech</option>
+                </select>
+                <button class="text-button" type="button" id="scanOutliers">Scan <span class="pro-chip">Pro</span></button>
+              </div>
+            </div>
+            <div class="outlier-grid" id="outlierGrid"></div>
+          </article>
+
+          <article class="panel competitor-panel" data-view-section="channels campaigns">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Competitive intelligence</p>
+                <h3>Creator comparison board</h3>
+              </div>
+              <button class="text-button" type="button" id="addCompetitor">Add competitor <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="competitor-table" id="competitorTable"></div>
+          </article>
+
+          <article class="panel packaging-panel" data-view-section="campaigns">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Packaging lab</p>
+                <h3>Title and thumbnail testing</h3>
+              </div>
+              <button class="text-button" type="button" id="runPackagingTest">Run test <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="packaging-grid" id="packagingGrid"></div>
+          </article>
+
+          <article class="panel repurpose-panel" data-view-section="campaigns coach">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Repurpose studio</p>
+                <h3>Turn every upload into a content system</h3>
+              </div>
+              <button class="text-button" type="button" id="buildRepurposePack">Build pack <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="repurpose-grid" id="repurposeGrid"></div>
+          </article>
+
+          <article class="panel optimizer-panel" data-view-section="campaigns">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Pre-publish optimizer</p>
+                <h3>Upload readiness score</h3>
+              </div>
+              <button class="text-button" type="button" id="optimizeUpload">Optimize <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="optimizer-grid" id="optimizerGrid"></div>
+          </article>
+
+          <article class="panel keyword-panel" data-view-section="campaigns">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">SEO engine</p>
+                <h3>Keyword opportunity scores</h3>
+              </div>
+              <label class="mini-field">
+                <span>Topic</span>
+                <input id="keywordTopic" type="text" value="creator analytics dashboard" />
+              </label>
+            </div>
+            <div class="keyword-list" id="keywordList"></div>
+          </article>
+
+          <article class="panel rules-panel" data-view-section="channels alerts">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Automation</p>
+                <h3>Video alert rules</h3>
+              </div>
+              <button class="text-button" type="button" id="createRule">Create rule <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="rule-list" id="ruleList"></div>
+          </article>
+
+          <article class="panel collections-panel" data-view-section="campaigns coach">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Strategy vault</p>
+                <h3>Saved collections</h3>
+              </div>
+              <button class="text-button" type="button" id="saveCollection">Save current idea <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="collection-list" id="collectionList"></div>
+          </article>
+
+          <article class="panel revenue-panel" data-view-section="overview revenue">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Revenue attribution</p>
+                <h3>Which content turns attention into income</h3>
+              </div>
+              <button class="text-button" type="button" id="reconcileRevenue">Reconcile <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="revenue-grid" id="revenueGrid"></div>
+          </article>
+
+          <article class="panel funnel-panel" data-view-section="revenue channels">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Bio funnel</p>
+                <h3>Link-in-bio and conversion paths</h3>
+              </div>
+              <button class="text-button" type="button" id="optimizeFunnel">Optimize funnel <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="funnel-grid" id="funnelGrid"></div>
+          </article>
+
+          <article class="panel deal-panel" data-view-section="revenue reports">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Brand CRM</p>
+                <h3>Sponsor pipeline and rate intelligence</h3>
+              </div>
+              <button class="text-button" type="button" id="createMediaKit">Build media kit <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="deal-grid" id="dealGrid"></div>
+          </article>
+
+          <article class="panel calendar-panel" data-view-section="calendar campaigns">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Content calendar</p>
+                <h3>AI-generated publishing plan</h3>
+              </div>
+              <button class="text-button" type="button" id="generateCalendar">Generate week <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </article>
+
+          <article class="panel report-panel" data-view-section="reports">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Team and client mode</p>
+                <h3>Shareable performance reports</h3>
+              </div>
+              <button class="text-button" type="button" id="createReport">Create report <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="report-grid" id="reportGrid"></div>
+          </article>
+
+          <article class="panel watchlist-panel" data-view-section="discovery">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Creator watchlist</p>
+                <h3>Saved creators to compare later</h3>
+              </div>
+              <button class="text-button" type="button" id="clearWatchlist">Clear watchlist</button>
+            </div>
+            <div class="watchlist-grid" id="watchlistGrid"></div>
+          </article>
+
+          <article class="panel settings-panel" data-view-section="settings">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Settings</p>
+                <h3>Account, billing, team, and data controls</h3>
+              </div>
+              <button class="text-button" type="button" id="saveSettings">Save settings</button>
+            </div>
+            <div class="settings-grid" id="settingsGrid"></div>
+          </article>
+
+          <article class="panel launch-panel" data-view-section="launch">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Launch center</p>
+                <h3>Go-live readiness command deck</h3>
+              </div>
+              <button class="text-button" type="button" id="runLaunchChecks">Run launch checks</button>
+            </div>
+            <div class="launch-hero">
+              <div>
+                <span class="data-pill">Prototype status</span>
+                <strong id="launchScore">72%</strong>
+                <p>ViralScope is strong as a product prototype. The next true launch blockers are production OAuth apps, Stripe checkout, privacy/legal pages, and real analytics storage.</p>
+              </div>
+              <div class="launch-meter" aria-hidden="true"><span id="launchMeterBar"></span></div>
+            </div>
+            <div class="launch-grid" id="launchGrid"></div>
+          </article>
+
+          <article class="panel launch-panel" data-view-section="launch">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">OAuth and payments</p>
+                <h3>Production connection checklist</h3>
+              </div>
+              <button class="text-button" type="button" id="openLaunchPaywall">Review paywall</button>
+            </div>
+            <div class="launch-stack" id="launchStack"></div>
+          </article>
+
+          <article class="panel launch-panel" data-view-section="launch">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Marketing launch</p>
+                <h3>Creator acquisition plan</h3>
+              </div>
+              <button class="text-button" type="button" id="generateLaunchCampaign">Generate launch campaign <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="marketing-grid" id="marketingGrid"></div>
+          </article>
+
+          <article class="panel audience-panel" data-view-section="overview audience">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Audience depth</p>
+                <h3>Who is leaning in</h3>
+              </div>
+              <span class="status-pill">Live</span>
+            </div>
+            <div class="audience-layout">
+              <canvas id="audienceChart" width="320" height="320" aria-label="Audience age chart"></canvas>
+              <div class="audience-insights">
+                <div>
+                  <small>Fastest growing segment</small>
+                  <strong>Women 25-34</strong>
+                  <span>+31% repeat viewers</span>
+                </div>
+                <div>
+                  <small>Best posting window</small>
+                  <strong>Tue 6-8 PM</strong>
+                  <span>1.7x comment rate</span>
+                </div>
+                <div>
+                  <small>Audience overlap</small>
+                  <strong>38%</strong>
+                  <span>YouTube to Instagram crossover</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel quality-panel" data-view-section="audience reports">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Audience quality</p>
+                <h3>Authenticity, fit, and brand safety</h3>
+              </div>
+              <button class="text-button" type="button" id="scanAudienceQuality">Scan quality <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="quality-grid" id="qualityGrid"></div>
+          </article>
+
+          <article class="panel owned-panel" data-view-section="audience revenue">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Owned audience</p>
+                <h3>Newsletter, community, shop, and memberships</h3>
+              </div>
+              <button class="text-button" type="button" id="syncOwnedAudience">Sync owned audience <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="owned-grid" id="ownedGrid"></div>
+          </article>
+
+          <article class="panel url-panel" data-view-section="channels">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Website tracker</p>
+                <h3>Tracked URLs</h3>
+              </div>
+              <button class="text-button" type="button" id="addUrlInline">Add URL</button>
+            </div>
+            <div class="url-list" id="urlList"></div>
+          </article>
+
+          <article class="panel alert-panel" data-view-section="overview alerts">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Opportunity radar</p>
+                <h3>Smart alerts</h3>
+              </div>
+              <button class="text-button" type="button" id="clearAlerts">Clear</button>
+            </div>
+            <div class="alert-list" id="alertList"></div>
+          </article>
+
+          <article class="panel listening-panel" data-view-section="alerts audience campaigns">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Social listening</p>
+                <h3>What your market is saying right now</h3>
+              </div>
+              <button class="text-button" type="button" id="scanListening">Scan mentions <span class="pro-chip">Pro</span></button>
+            </div>
+            <div class="listening-grid" id="listeningGrid"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="connectDialog" class="modal">
+      <form method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Connect source</p>
+            <h3>Add a platform or website</h3>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Close">×</button>
+        </div>
+        <div class="platform-grid" id="platformGrid"></div>
+        <section class="oauth-preview" id="oauthPreview" aria-live="polite"></section>
+        <label class="field">
+          <span>Website or campaign URL</span>
+          <input id="urlInput" type="url" placeholder="https://your-site.com/campaign" />
+        </label>
+        <div class="modal-actions">
+          <button class="secondary-button" value="cancel">Cancel</button>
+          <button class="secondary-button" value="default" id="connectOAuth">Connect account</button>
+          <button class="primary-button" value="default" id="saveConnection">Start tracking</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="authDialog" class="modal">
+      <form method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">ViralScope account</p>
+            <h3 id="authTitle">Log in</h3>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Close">×</button>
+        </div>
+        <label class="field auth-name-field">
+          <span>Name</span>
+          <input id="authName" type="text" placeholder="Creator name" />
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input id="authEmail" type="email" placeholder="creator@example.com" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="authPassword" type="password" placeholder="At least 8 characters" />
+        </label>
+        <div class="modal-actions">
+          <button class="text-button" type="button" id="toggleAuthMode">Create account</button>
+          <button class="primary-button" value="default" id="submitAuth">Continue</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="upgradeDialog" class="modal upgrade-dialog">
+      <form method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow" id="upgradeEyebrow">Pro command layer</p>
+            <h3 id="upgradeTitle">Unlock OAuth connections</h3>
+            <p id="upgradeSubtitle">Choose the workspace tier that fits how serious you are about creator growth.</p>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Close">×</button>
+        </div>
+        <section class="upgrade-panel paywall-panel">
+          <div class="paywall-context">
+            <div>
+              <span class="data-pill">Why this is paid</span>
+              <p id="upgradeReason">OAuth connections require secure account linking, token storage, scheduled syncs, and API monitoring.</p>
+            </div>
+            <div class="billing-toggle" aria-label="Billing interval">
+              <button type="button" class="is-active" data-billing="monthly">Monthly</button>
+              <button type="button" data-billing="yearly">Yearly <span>save 20%</span></button>
+            </div>
+          </div>
+          <div class="pricing-grid paywall-pricing" id="pricingOptions"></div>
+          <div class="paywall-details">
+            <div class="feature-matrix" id="featureMatrix"></div>
+            <aside class="checkout-preview" id="checkoutPreview"></aside>
+          </div>
+        </section>
+        <div class="modal-actions">
+          <button class="secondary-button" value="cancel">Maybe later</button>
+          <button class="primary-button" value="default" id="upgradePlan">Continue to checkout</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="settingsDialog" class="settings-modal">
+      <form method="dialog">
+        <div class="settings-modal-header">
+          <div>
+            <p class="eyebrow">ViralScope control room</p>
+            <h3 id="settingsModalTitle">Settings</h3>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Close">×</button>
+        </div>
+        <div class="settings-modal-body">
+          <nav class="settings-rail" id="settingsRail" aria-label="Settings sections"></nav>
+          <section class="settings-detail" id="settingsDetail"></section>
+        </div>
+        <div class="settings-modal-footer">
+          <button class="secondary-button" value="cancel">Close</button>
+          <button class="primary-button" value="default" id="saveSettingsModal">Save changes</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="onboardingDialog" class="modal onboarding-modal">
+      <form method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">First-run setup</p>
+            <h3>Build your creator command center</h3>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Close">×</button>
+        </div>
+        <div class="onboarding-progress" id="onboardingProgress"></div>
+        <section class="onboarding-step-panel active" data-onboarding-step="0">
+          <p class="eyebrow">Step 1</p>
+          <h4>What kind of creator are you building for?</h4>
+          <div class="choice-grid" data-choice-group="creatorType">
+            <button type="button" class="choice-card active" data-choice="Education">Education / commentary</button>
+            <button type="button" class="choice-card" data-choice="Gaming">Gaming / streaming</button>
+            <button type="button" class="choice-card" data-choice="Lifestyle">Lifestyle / personal brand</button>
+            <button type="button" class="choice-card" data-choice="Business">Business / creator founder</button>
+          </div>
+        </section>
+        <section class="onboarding-step-panel" data-onboarding-step="1">
+          <p class="eyebrow">Step 2</p>
+          <h4>Pick the main outcome ViralScope should optimize for.</h4>
+          <div class="choice-grid" data-choice-group="goal">
+            <button type="button" class="choice-card active" data-choice="Grow views">Grow views</button>
+            <button type="button" class="choice-card" data-choice="Turn traffic into revenue">Turn traffic into revenue</button>
+            <button type="button" class="choice-card" data-choice="Win brand deals">Win brand deals</button>
+            <button type="button" class="choice-card" data-choice="Build owned audience">Build owned audience</button>
+          </div>
+        </section>
+        <section class="onboarding-step-panel" data-onboarding-step="2">
+          <p class="eyebrow">Step 3</p>
+          <h4>Choose the platforms to monitor first.</h4>
+          <div class="platform-check-grid" id="onboardingPlatformGrid"></div>
+        </section>
+        <section class="onboarding-step-panel" data-onboarding-step="3">
+          <p class="eyebrow">Step 4</p>
+          <h4>Add your first free tracking URL.</h4>
+          <label class="field">
+            <span>Website, bio link, campaign, or shop URL</span>
+            <input id="onboardingUrl" type="url" value="https://curiositybelow.com/start" />
+          </label>
+          <p class="setup-note">URL tracking can be used on the Free plan. OAuth account connections stay behind Pro.</p>
+        </section>
+        <section class="onboarding-step-panel" data-onboarding-step="4">
+          <p class="eyebrow">Step 5</p>
+          <h4>Your first workspace plan is ready.</h4>
+          <div class="setup-summary" id="setupSummary"></div>
+        </section>
+        <div class="modal-actions onboarding-actions">
+          <button class="secondary-button" type="button" id="onboardingBack">Back</button>
+          <button class="primary-button" type="button" id="onboardingNext">Next</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="ruleDialog" class="modal">
+      <form method="dialog">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Automation builder</p>
+            <h3>Create alert rule</h3>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Close">×</button>
+        </div>
+        <div class="rule-builder-grid">
+          <label class="field">
+            <span>Rule name</span>
+            <input id="ruleName" type="text" value="New outlier opportunity" />
+          </label>
+          <label class="field">
+            <span>Platform</span>
+            <select id="rulePlatform">
+              <option>Any connected platform</option>
+              <option>YouTube</option>
+              <option>Instagram</option>
+              <option>TikTok</option>
+              <option>Twitch</option>
+              <option>Kick</option>
+              <option>Facebook</option>
+              <option>Website</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Signal</span>
+            <select id="ruleSignal">
+              <option>Views exceed baseline</option>
+              <option>CTR drops below target</option>
+              <option>Chat velocity spikes</option>
+              <option>Revenue attribution jumps</option>
+              <option>Competitor outlier appears</option>
+              <option>Failed sync detected</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Condition</span>
+            <select id="ruleCondition">
+              <option>is greater than</option>
+              <option>is less than</option>
+              <option>changes by</option>
+              <option>matches</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Threshold</span>
+            <input id="ruleThreshold" type="text" value="2.5x channel baseline" />
+          </label>
+          <label class="field">
+            <span>Time window</span>
+            <select id="ruleWindow">
+              <option>first 6 hours</option>
+              <option>first 24 hours</option>
+              <option>last 7 days</option>
+              <option>real time</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Notify</span>
+            <select id="ruleNotify">
+              <option>In-app and email</option>
+              <option>In-app only</option>
+              <option>Email digest</option>
+              <option>Slack/webhook later</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Status</span>
+            <select id="ruleStatus">
+              <option>Active</option>
+              <option>Draft</option>
+            </select>
+          </label>
+        </div>
+        <section class="oauth-preview">
+          <header>
+            <div>
+              <p class="eyebrow">Preview</p>
+              <h4 id="rulePreviewTitle">New outlier opportunity</h4>
+            </div>
+            <span class="data-pill" id="rulePreviewStatus">Active</span>
+          </header>
+          <p id="rulePreviewText">Any connected platform - Views exceed baseline is greater than 2.5x channel baseline during first 6 hours.</p>
+        </section>
+        <div class="modal-actions">
+          <button class="secondary-button" value="cancel">Cancel</button>
+          <button class="primary-button" value="default" id="saveRule">Create rule</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

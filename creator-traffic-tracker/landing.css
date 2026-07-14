@@ -1,0 +1,480 @@
+:root {
+  color-scheme: dark;
+  --bg: #05070a;
+  --panel: rgba(12, 16, 22, 0.84);
+  --panel-strong: rgba(17, 22, 30, 0.96);
+  --line: rgba(164, 190, 208, 0.16);
+  --text: #f7fbff;
+  --muted: #a7b4bd;
+  --teal: #65f6ff;
+  --orange: #ff9a3d;
+  --green: #7dff9b;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 12% 4%, rgba(101, 246, 255, 0.18), transparent 30rem),
+    radial-gradient(circle at 88% 14%, rgba(255, 154, 61, 0.16), transparent 28rem),
+    linear-gradient(180deg, #07090d, var(--bg) 38%);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent 82%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px clamp(18px, 4vw, 56px);
+  border-bottom: 1px solid var(--line);
+  background: rgba(5, 7, 10, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(101, 246, 255, 0.28);
+  background: linear-gradient(135deg, var(--teal), var(--orange));
+  color: #051015;
+  font-weight: 950;
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand small,
+.eyebrow,
+.section-heading p,
+.hero-copy p,
+.workflow-list span,
+.feature-grid p,
+.pricing-grid p,
+.waitlist-section p,
+footer {
+  color: var(--muted);
+}
+
+.site-nav nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.site-nav nav a {
+  padding: 9px 10px;
+  color: var(--muted);
+}
+
+.site-nav nav a:hover {
+  color: var(--text);
+}
+
+.site-nav nav a.nav-cta {
+  color: #061015;
+}
+
+.nav-cta,
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid rgba(101, 246, 255, 0.22);
+  padding: 0 16px;
+  font-weight: 900;
+}
+
+.nav-cta,
+.primary-button {
+  color: #061015;
+  background: linear-gradient(135deg, var(--teal), var(--orange));
+}
+
+.secondary-button {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hero,
+.section,
+.waitlist-section {
+  width: min(1180px, calc(100% - 36px));
+  margin: 0 auto;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.96fr);
+  gap: clamp(22px, 4vw, 56px);
+  align-items: center;
+  min-height: calc(100vh - 80px);
+  padding: 34px 0 30px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: var(--teal);
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 760px;
+  margin-bottom: 14px;
+  font-size: clamp(2.65rem, 4.45vw, 4.8rem);
+  line-height: 0.94;
+  letter-spacing: 0;
+}
+
+h2 {
+  font-size: clamp(2rem, 4vw, 4.2rem);
+  line-height: 0.96;
+}
+
+h3 {
+  font-size: 1.12rem;
+}
+
+.hero-copy p {
+  max-width: 660px;
+  font-size: 1.12rem;
+  line-height: 1.55;
+}
+
+.hero-actions,
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.hero-stats span {
+  min-width: 128px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+}
+
+.hero-stats strong {
+  display: block;
+  color: var(--text);
+  font-size: 1.4rem;
+}
+
+.hero-visual {
+  position: relative;
+  min-height: 480px;
+  border: 1px solid rgba(101, 246, 255, 0.22);
+  background:
+    linear-gradient(135deg, rgba(101, 246, 255, 0.08), transparent 50%),
+    var(--panel);
+  overflow: hidden;
+  clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 28px 100%, 0 calc(100% - 28px));
+}
+
+.hero-visual img {
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  object-fit: cover;
+  filter: saturate(1.2) contrast(1.14) brightness(0.72);
+}
+
+.floating-card {
+  position: absolute;
+  display: grid;
+  gap: 2px;
+  min-width: 130px;
+  padding: 14px;
+  border: 1px solid rgba(101, 246, 255, 0.28);
+  background: rgba(5, 7, 10, 0.84);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+}
+
+.floating-card strong {
+  font-size: 1.8rem;
+}
+
+.floating-card span {
+  color: var(--muted);
+}
+
+.card-a {
+  left: 22px;
+  bottom: 28px;
+}
+
+.card-b {
+  right: 26px;
+  top: 32px;
+}
+
+.proof-strip {
+  display: flex;
+  width: min(1180px, calc(100% - 36px));
+  margin: 0 auto 42px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.035);
+  overflow: auto;
+}
+
+.proof-strip span {
+  min-width: max-content;
+  padding: 16px 22px;
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.section,
+.waitlist-section {
+  padding: 64px 0;
+}
+
+.section-heading {
+  max-width: 760px;
+  margin-bottom: 24px;
+}
+
+.section-heading p,
+.waitlist-section p {
+  font-size: 1.04rem;
+  line-height: 1.6;
+}
+
+.feature-grid,
+.pricing-grid,
+.marketing-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.feature-grid article,
+.pricing-grid article,
+.workflow-list div,
+.waitlist-form {
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 60%),
+    var(--panel);
+}
+
+.feature-grid article,
+.pricing-grid article {
+  padding: 18px;
+  min-height: 210px;
+}
+
+.feature-grid span,
+.plan-pill {
+  color: var(--orange);
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.split-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(360px, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+
+.workflow-list {
+  display: grid;
+  gap: 10px;
+}
+
+.workflow-list div {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+}
+
+.pricing-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pricing-grid strong {
+  display: block;
+  margin: 12px 0;
+  font-size: 2.4rem;
+}
+
+.pricing-grid .featured {
+  border-color: rgba(255, 154, 61, 0.44);
+  box-shadow: 0 0 36px rgba(255, 154, 61, 0.12);
+}
+
+.waitlist-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(420px, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+
+.waitlist-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 18px;
+}
+
+.waitlist-form label,
+.waitlist-form .full {
+  display: grid;
+  gap: 7px;
+}
+
+.waitlist-form .full,
+.waitlist-form button,
+.form-note {
+  grid-column: 1 / -1;
+}
+
+.waitlist-form span {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.waitlist-form input,
+.waitlist-form select,
+.waitlist-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  padding: 12px;
+}
+
+.waitlist-form textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.form-note {
+  margin: 0;
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1180px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 34px 0 44px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 980px) {
+  .hero,
+  .split-section,
+  .waitlist-section {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    min-height: auto;
+  }
+
+  .hero-visual,
+  .hero-visual img {
+    min-height: 360px;
+  }
+
+  .feature-grid,
+  .pricing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .site-nav,
+  .site-nav nav,
+  footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  h1 {
+    font-size: 2.7rem;
+  }
+
+  .feature-grid,
+  .pricing-grid,
+  .waitlist-form {
+    grid-template-columns: 1fr;
+  }
+
+  .floating-card {
+    position: static;
+    margin: 10px;
+  }
+}
