@@ -1,8 +1,10 @@
 [build]
-  publish = "."
+  base = "."
+  command = "echo \"No build needed\""
+  publish = "creator-traffic-tracker"
+  functions = "creator-traffic-tracker/netlify/functions"
 
 [functions]
-  directory = "netlify/functions"
   node_bundler = "esbuild"
 
 [[redirects]]
@@ -20,8 +22,3 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-
-[[headers]]
-  for = "/assets/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
