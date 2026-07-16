@@ -2047,6 +2047,7 @@ function renderSettings() {
 function settingControls(id) {
   const userName = currentUser?.name || "Curiosity Below";
   const userEmail = currentUser?.email || "creator@example.com";
+  const isPro = currentUser?.plan === "pro";
   const map = {
     profile: `
       <div class="settings-control"><label>Creator name</label><input value="${userName}" /></div>
@@ -2055,9 +2056,9 @@ function settingControls(id) {
       <div class="settings-control"><label>Password</label><button class="secondary-button" type="button">Send reset link</button></div>
     `,
     billing: `
-      <div class="settings-control"><label>Current plan</label><strong>${currentUser?.plan === "pro" ? "Pro - $29/mo" : "Free"}</strong><button class="primary-button" type="button" id="settingsUpgrade">Manage plan</button></div>
-      <div class="settings-control"><label>Payment method</label><strong>Visa ending 4242</strong><button class="secondary-button" type="button">Update card</button></div>
-      <div class="settings-control"><label>Invoices</label><button class="secondary-button" type="button">Download latest invoice</button></div>
+      <div class="settings-control"><label>Current plan</label><strong>${isPro ? "Pro active - $29/mo" : "Free"}</strong><button class="${isPro ? "secondary-button" : "primary-button"}" type="button" id="settingsUpgrade">${isPro ? "Manage billing" : "Upgrade to Pro"}</button></div>
+      <div class="settings-control"><label>Payment method</label><strong>${isPro ? "Visa ending 4242" : "No payment method"}</strong><button class="secondary-button" type="button">${isPro ? "Update card" : "Add card"}</button></div>
+      <div class="settings-control"><label>Invoices</label><button class="secondary-button" type="button">${isPro ? "Download latest invoice" : "No invoices yet"}</button></div>
       <div class="settings-control"><label>Billing alerts</label><div class="toggle-row"><span>Email receipts</span><i class="toggle-switch"></i></div></div>
     `,
     connections: `
@@ -2127,7 +2128,13 @@ function renderSettingsModal() {
       renderSettingsModal();
     });
   });
-  $("#settingsUpgrade")?.addEventListener("click", openUpgradeDialog);
+  $("#settingsUpgrade")?.addEventListener("click", () => {
+    if (currentUser?.plan === "pro") {
+      showToast("Pro is active. Stripe customer portal is the next production billing step.");
+      return;
+    }
+    openUpgradeDialog();
+  });
 }
 
 function openSettingsDialog(id = "profile") {
@@ -3208,6 +3215,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#connectOAuth").addEventListener("click", connectOAuth);
   $("#accountButton").addEventListener("click", () => {
     if (!currentUser) openAuthDialog("login");
+    else if (currentUser.plan === "pro") openSettingsDialog("billing");
     else openUpgradeDialog();
   });
   $("#toggleAuthMode").addEventListener("click", () => openAuthDialog(authMode === "login" ? "signup" : "login"));
