@@ -1,8 +1,8 @@
 [build]
   base = "."
   command = "echo \"No build needed\""
-  publish = "creator-traffic-tracker"
-  functions = "creator-traffic-tracker/netlify/functions"
+  publish = "."
+  functions = "netlify/functions"
 
 [functions]
   node_bundler = "esbuild"
