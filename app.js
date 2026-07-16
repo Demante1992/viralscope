@@ -319,6 +319,16 @@ let integrations = [
   { platform: "Website", status: "Tracking", scope: "UTMs, referrals, conversions", freshness: "Real time" }
 ];
 
+const demoState = {
+  platforms: platforms.map((item) => ({ ...item })),
+  urls: urls.map((item) => ({ ...item })),
+  alerts: alerts.map((item) => ({ ...item })),
+  activityFeed: activityFeed.map((item) => ({ ...item })),
+  liveOpsState: { ...liveOpsState },
+  integrations: integrations.map((item) => ({ ...item })),
+  channelPreviewData: JSON.parse(JSON.stringify(channelPreviewData))
+};
+
 let uploadScores = [
   { name: "Hook clarity", score: 89, note: "The opening promise is specific and fast." },
   { name: "Title strength", score: 93, note: "Variant B creates the strongest curiosity gap." },
@@ -855,9 +865,10 @@ function onboardingItems() {
 }
 
 function internalSearchItems() {
+  const contentItems = currentUser ? [] : topContent;
   return [
     ...platforms.map((item) => ({ type: "Channel", title: item.name, detail: item.connected ? item.followers : "OAuth needed", view: "channels" })),
-    ...topContent.map((item) => ({ type: "Content", title: item.title, detail: `${item.platform} · ${item.views}`, view: "campaigns" })),
+    ...contentItems.map((item) => ({ type: "Content", title: item.title, detail: `${item.platform} · ${item.views}`, view: "campaigns" })),
     ...urls.map((item) => ({ type: "URL", title: item.url, detail: `${item.clicks} clicks`, view: "channels" })),
     ...alerts.map((item) => ({ type: "Alert", title: item.title, detail: item.body, view: "alerts" })),
     ...calendarItems.map((item) => ({ type: "Calendar", title: item.title, detail: `${item.day} · ${item.platform}`, view: "calendar" })),
@@ -954,18 +965,178 @@ function updateAccountUi() {
   renderOnboarding();
 }
 
+function copyInto(target, source) {
+  target.splice(0, target.length, ...source.map((item) => ({ ...item })));
+}
+
+function restoreDemoState() {
+  copyInto(platforms, demoState.platforms);
+  urls = demoState.urls.map((item) => ({ ...item }));
+  alerts = demoState.alerts.map((item) => ({ ...item }));
+  activityFeed = demoState.activityFeed.map((item) => ({ ...item }));
+  liveOpsState = { ...demoState.liveOpsState };
+  integrations = demoState.integrations.map((item) => ({ ...item }));
+  Object.entries(demoState.channelPreviewData).forEach(([platform, data]) => {
+    channelPreviewData[platform] = JSON.parse(JSON.stringify(data));
+  });
+}
+
+function inferPlatformFromUrl(url = "", fallback = "") {
+  const value = `${fallback} ${url}`.toLowerCase();
+  if (value.includes("youtube.com") || value.includes("youtu.be") || value.includes("youtube")) return "YouTube";
+  if (value.includes("instagram.com") || value.includes("instagram")) return "Instagram";
+  if (value.includes("tiktok.com") || value.includes("tiktok")) return "TikTok";
+  if (value.includes("twitch.tv") || value.includes("twitch")) return "Twitch";
+  if (value.includes("kick.com") || value.includes("kick")) return "Kick";
+  if (value.includes("facebook.com") || value.includes("facebook") || value.includes("fb.com")) return "Facebook";
+  return fallback && platforms.some((item) => item.name === fallback) ? fallback : "Website";
+}
+
+function platformScope(platform, mode) {
+  const scopes = {
+    YouTube: mode === "oauth" ? "Videos, Studio analytics, comments" : "Channel URL, referrals, campaign clicks",
+    Instagram: mode === "oauth" ? "Reels, posts, profile clicks" : "Profile URL, referrals, campaign clicks",
+    TikTok: mode === "oauth" ? "Videos, sounds, shares" : "Profile URL, referrals, campaign clicks",
+    Twitch: mode === "oauth" ? "Streams, chat, commands" : "Channel URL, referrals, campaign clicks",
+    Kick: mode === "oauth" ? "Streams and clips" : "Channel URL, referrals, campaign clicks",
+    Facebook: mode === "oauth" ? "Pages, posts, insights" : "Page URL, referrals, campaign clicks",
+    Website: "UTMs, referrals, conversions"
+  };
+  return scopes[platform] || "Tracked URL and referrals";
+}
+
+function setMetricText(id, value) {
+  const node = document.getElementById(id);
+  if (node) node.textContent = value;
+}
+
+function applyEmptyMetricState() {
+  if (!currentUser || metricsSummary?.latest?.length) return;
+  setMetricText("totalViews", "0");
+  setMetricText("heroViews", "0");
+  setMetricText("engagements", "0");
+  setMetricText("siteClicks", urls.length ? "0" : "0");
+  setMetricText("revenue", "$0");
+}
+
+function applyWorkspaceSourceState() {
+  if (!currentUser) {
+    restoreDemoState();
+    return;
+  }
+
+  Object.entries(demoState.channelPreviewData).forEach(([platform, data]) => {
+    channelPreviewData[platform] = {
+      ...JSON.parse(JSON.stringify(data)),
+      name: platform === "Website" ? "Owned traffic hub" : `${platform} source`,
+      handle: "Not connected yet",
+      avatar: data.avatar,
+      stats: [
+        ["0", platform === "Website" ? "Visits" : "Views"],
+        ["0", platform === "YouTube" ? "Subscribers" : "Followers"],
+        ["No sync", "OAuth"],
+        ["0", "Clicks"]
+      ],
+      posts: ["Waiting for data", "Add OAuth", "Track a URL", "First sync"]
+    };
+  });
+
+  copyInto(platforms, demoState.platforms.map((item) => ({
+    ...item,
+    connected: false,
+    health: 0,
+    followers: "Not linked"
+  })));
+  integrations = demoState.integrations.map((item) => ({
+    ...item,
+    status: "Needs auth",
+    scope: platformScope(item.platform, "url"),
+    freshness: "Not connected"
+  }));
+
+  const trackedUrls = urls.map((item) => ({
+    ...item,
+    source: inferPlatformFromUrl(item.url, item.source)
+  }));
+  urls = trackedUrls;
+
+  trackedUrls.forEach((item) => {
+    const platform = platforms.find((entry) => entry.name === item.source) || platforms.find((entry) => entry.name === "Website");
+    if (!platform) return;
+    platform.connected = true;
+    platform.health = Math.max(platform.health, 72);
+    platform.followers = "URL tracking";
+    const preview = channelPreviewData[platform.name];
+    if (preview) {
+      preview.name = `${platform.name} tracked source`;
+      preview.handle = item.url;
+      preview.stats = [
+        ["0", platform.name === "Website" ? "Visits" : "Views"],
+        ["0", "Clicks"],
+        ["URL", "Tracking"],
+        ["No sync", "OAuth"]
+      ];
+      preview.posts = ["Waiting for clicks", "Campaign ready", "OAuth later", "First report"];
+    }
+  });
+
+  (currentUser.connections || []).forEach((name) => {
+    const platform = platforms.find((entry) => entry.name === name);
+    if (!platform) return;
+    platform.connected = true;
+    platform.health = Math.max(platform.health, 92);
+    platform.followers = platform.followers === "Not linked" ? "OAuth sync" : platform.followers;
+  });
+
+  integrations = integrations.map((item) => {
+    const hasOAuth = (currentUser.connections || []).includes(item.platform);
+    const trackedCount = trackedUrls.filter((url) => url.source === item.platform).length;
+    if (hasOAuth) {
+      return { ...item, status: "OAuth connected", scope: platformScope(item.platform, "oauth"), freshness: "Ready to sync" };
+    }
+    if (trackedCount) {
+      return { ...item, status: "URL tracking", scope: `${trackedCount} tracked ${trackedCount === 1 ? "source" : "sources"}`, freshness: "Real time" };
+    }
+    return item;
+  });
+
+  const connectedCount = platforms.filter((item) => item.connected).length;
+  alerts = [];
+  activityFeed = trackedUrls.map((item) => ({
+    type: "URL",
+    title: `${item.source} source added: ${item.url}`,
+    time: "Now",
+    status: "live"
+  })).slice(0, 6);
+  liveOpsState = connectedCount
+    ? {
+        title: "Workspace tracking is ready",
+        body: `${connectedCount} source${connectedCount === 1 ? "" : "s"} connected for URL tracking. OAuth sync will unlock deeper metrics once provider credentials are live.`,
+        status: `Tracking ${connectedCount} source${connectedCount === 1 ? "" : "s"}`
+      }
+    : {
+        title: "Connect your first source",
+        body: "Add a channel URL for free tracking, or upgrade/connect OAuth when live provider credentials are configured.",
+        status: "No sources yet"
+      };
+  applyEmptyMetricState();
+}
+
 async function refreshSession() {
   try {
     const data = await apiRequest("/api/me");
     currentUser = data.user;
     currentWorkspace = data.workspace || null;
     updateAccountUi();
+    urls = (currentWorkspace?.trackedUrls || []).map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" }));
+    applyWorkspaceSourceState();
     await refreshTrackedUrls();
     await refreshMetricsSummary();
   } catch {
     currentUser = null;
     currentWorkspace = null;
     metricsSummary = null;
+    restoreDemoState();
     updateAccountUi();
   }
 }
@@ -1057,12 +1228,22 @@ async function refreshTrackedUrls() {
   if (!currentUser) return;
   try {
     const data = await apiRequest("/api/urls");
-    if (Array.isArray(data.urls) && data.urls.length) {
-      urls = data.urls.map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" }));
-      renderUrls();
-    }
-  } catch {
-    // Keep demo URLs available if backend storage is not ready.
+    urls = Array.isArray(data.urls) ? data.urls.map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" })) : [];
+    applyWorkspaceSourceState();
+    renderChannels();
+    renderIntegrations();
+    renderActivityFeed();
+    renderChannelPreview();
+    renderUrls();
+  } catch (error) {
+    urls = [];
+    applyWorkspaceSourceState();
+    renderChannels();
+    renderIntegrations();
+    renderActivityFeed();
+    renderChannelPreview();
+    renderUrls();
+    showToast(error.message);
   }
 }
 
@@ -1270,7 +1451,8 @@ function renderChannels() {
 function renderContent() {
   const filter = $("#platformFilter").value;
   const query = $("#searchInput").value.trim().toLowerCase();
-  const filtered = topContent.filter((item) => {
+  const contentSource = currentUser ? [] : topContent;
+  const filtered = contentSource.filter((item) => {
     const matchesPlatform = filter === "All" || item.platform === filter;
     const matchesQuery = !query || `${item.title} ${item.platform}`.toLowerCase().includes(query);
     return matchesPlatform && matchesQuery;
@@ -1298,7 +1480,7 @@ function renderContent() {
           </div>
         `
       )
-      .join("") || `<div class="alert-item"><div class="alert-dot"></div><p>No content matches this search yet.</p></div>`;
+      .join("") || `<div class="alert-item"><div class="alert-dot"></div><p>${currentUser ? "No content metrics yet. Add a tracked URL or connect OAuth to start building your real content leaderboard." : "No content matches this search yet."}</p></div>`;
 
   document.querySelectorAll("[data-lift-index]").forEach((button) => {
     const item = filtered[Number(button.dataset.liftIndex)];
@@ -1331,7 +1513,7 @@ function renderUrls() {
         </div>
       `
     )
-    .join("");
+    .join("") || `<div class="url-item"><div><strong>No tracked URLs yet</strong><small>Add a website, channel, bio link, or campaign URL to start collecting real source data.</small></div><span class="url-metric">0</span></div>`;
 }
 
 function renderAlerts() {
@@ -2248,6 +2430,43 @@ function drawTrafficChart(progress = 1) {
   const width = canvas.width / dpr;
   const height = canvas.height / dpr;
   const padding = { top: 24, right: 20, bottom: 34, left: 42 };
+  const hasRealMetrics = !currentUser || metricsSummary?.latest?.length;
+  if (!hasRealMetrics) {
+    chartPoints = [];
+    ctx.clearRect(0, 0, width, height);
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--line");
+    ctx.lineWidth = 1;
+    ctx.font = "12px Inter, sans-serif";
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--muted");
+
+    for (let i = 0; i <= 4; i += 1) {
+      const y = padding.top + ((height - padding.top - padding.bottom) / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(width - padding.right, y);
+      ctx.stroke();
+      ctx.fillText("0", 18, y + 4);
+    }
+
+    ctx.font = "600 16px Inter, sans-serif";
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--text");
+    ctx.textAlign = "center";
+    ctx.fillText("Waiting for real channel metrics", width / 2, height / 2 - 8);
+    ctx.font = "13px Inter, sans-serif";
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--muted");
+    ctx.fillText("Add URLs now, then connect OAuth to populate live analytics.", width / 2, height / 2 + 18);
+    ctx.textAlign = "start";
+    $("#chartLegend").innerHTML = Object.keys(chartSeries)
+      .map(
+        (key) => `
+          <button type="button" class="${platforms.some((platform) => platform.name === key && platform.connected) ? "active" : ""}" data-chart-key="${key}">
+            <i style="background:${chartSeries[key].color}"></i>${key}
+          </button>
+        `
+      )
+      .join("");
+    return;
+  }
   const keys = Object.keys(chartSeries);
   const visibleKeys = getVisibleChartKeys();
   const allValues = visibleKeys.flatMap((key) => getChartValues(chartSeries[key]));
@@ -2492,37 +2711,36 @@ async function saveConnection(event) {
   }
   const urlInput = $("#urlInput");
   const url = urlInput.value.trim();
-  const platform = platforms.find((item) => item.name === selectedPlatform);
-  if (platform && !platform.connected) {
-    platform.connected = true;
-    platform.health = 88;
-    platform.followers = "Syncing";
-  }
 
   if (url) {
     const label = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const source = inferPlatformFromUrl(label, selectedPlatform);
     try {
       const data = await apiRequest("/api/urls", {
         method: "POST",
-        body: JSON.stringify({ url: label, source: selectedPlatform })
+        body: JSON.stringify({ url: label, source })
       });
       urls = (data.urls || []).map((item) => ({ ...item, clicks: "0", change: "Tracking" }));
       metricsSummary = null;
+      applyWorkspaceSourceState();
     } catch (error) {
       if (error.status === 402) {
         $("#connectDialog").close();
         openUpgradeDialog("additional tracked URLs");
         return;
       }
-      urls.unshift({ url: label, source: selectedPlatform, clicks: "New", change: "Tracking" });
+      urls.unshift({ url: label, source, clicks: "New", change: "Tracking" });
+      applyWorkspaceSourceState();
       showToast(error.message);
     }
     urlInput.value = "";
+  } else {
+    applyWorkspaceSourceState();
   }
 
   $("#connectDialog").close();
   renderAll();
-  showToast(currentUser.plan === "pro" ? `${selectedPlatform} tracking is being prepared.` : "Free URL tracking added. OAuth remains a Pro feature.");
+  showToast(url ? `${inferPlatformFromUrl(url, selectedPlatform)} URL tracking added. OAuth remains a Pro feature.` : "Add a URL or choose OAuth to connect a source.");
 }
 
 async function connectOAuth(event) {
@@ -2606,8 +2824,12 @@ async function submitAuth(event) {
     });
     currentUser = data.user;
     currentWorkspace = data.workspace || currentWorkspace;
+    urls = (currentWorkspace?.trackedUrls || []).map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" }));
+    metricsSummary = null;
+    applyWorkspaceSourceState();
     updateAccountUi();
     await refreshMetricsSummary();
+    renderAll();
     $("#authDialog").close();
     showToast(authMode === "signup" ? "Free account created." : "Logged in.");
   } catch (error) {
