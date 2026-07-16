@@ -2130,7 +2130,7 @@ function renderSettingsModal() {
   });
   $("#settingsUpgrade")?.addEventListener("click", () => {
     if (currentUser?.plan === "pro") {
-      showToast("Pro is active. Stripe customer portal is the next production billing step.");
+      openBillingPortal();
       return;
     }
     openUpgradeDialog();
@@ -2894,6 +2894,24 @@ async function upgradePlan(event) {
   }
 }
 
+async function openBillingPortal() {
+  if (!currentUser) {
+    openAuthDialog("login");
+    return;
+  }
+  try {
+    const data = await apiRequest("/api/billing/portal", { method: "POST" });
+    if (data.portalUrl) {
+      showToast("Opening Stripe billing portal.");
+      window.location.href = data.portalUrl;
+      return;
+    }
+    showToast(data.message || "Billing portal will be available after a live Stripe checkout.");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
 async function simulateRefresh() {
   const button = $("#simulateRefresh");
   setButtonWorking(button, true, "Syncing");
@@ -3122,12 +3140,28 @@ function setActiveView(view) {
 function handleBillingReturn() {
   const params = new URLSearchParams(window.location.search);
   const checkout = params.get("checkout");
+  const sessionId = params.get("session_id");
   const billing = params.get("billing");
   const oauth = params.get("oauth");
   const provider = params.get("provider");
   if (checkout === "success") {
-    showToast("Checkout completed. Your plan will unlock after Stripe confirms payment.");
-    refreshSession();
+    showToast("Checkout completed. Confirming your plan with Stripe.");
+    if (sessionId) {
+      apiRequest("/api/billing/confirm", {
+        method: "POST",
+        body: JSON.stringify({ sessionId })
+      })
+        .then((data) => {
+          if (data.user) currentUser = data.user;
+          updateAccountUi();
+          renderAll();
+          showToast(currentUser?.plan === "pro" || currentUser?.plan === "studio" ? "Paid plan confirmed." : "Checkout is still processing.");
+        })
+        .catch((error) => showToast(error.message))
+        .finally(refreshSession);
+    } else {
+      refreshSession();
+    }
     refreshLaunchReadiness();
   }
   if (checkout === "cancelled") {

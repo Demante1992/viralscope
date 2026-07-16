@@ -312,8 +312,24 @@ function publicUser(user) {
     role: user.role || "owner",
     workspaceId: user.workspaceId,
     entitlements,
+    billing: publicBilling(user.billing),
     connections: user.connections || [],
     oauthStatus
+  };
+}
+
+function publicBilling(billing = {}) {
+  return {
+    provider: billing.provider || "none",
+    mode: billing.mode || "free",
+    interval: billing.interval || null,
+    checkoutStatus: billing.checkoutStatus || null,
+    requestedPlan: billing.requestedPlan || null,
+    customerId: billing.customerId ? "connected" : null,
+    subscriptionId: billing.subscriptionId ? "connected" : null,
+    upgradedAt: billing.upgradedAt || null,
+    cancelledAt: billing.cancelledAt || null,
+    currentPeriodEnd: billing.currentPeriodEnd || null
   };
 }
 
@@ -553,6 +569,37 @@ function stripeRequest(endpoint, params) {
     );
     request.on("error", reject);
     request.write(body);
+    request.end();
+  });
+}
+
+function stripeGet(endpoint) {
+  return new Promise((resolve, reject) => {
+    const request = https.request(
+      {
+        hostname: "api.stripe.com",
+        path: endpoint,
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`
+        }
+      },
+      (response) => {
+        let data = "";
+        response.on("data", (chunk) => {
+          data += chunk;
+        });
+        response.on("end", () => {
+          const parsed = data ? JSON.parse(data) : {};
+          if (response.statusCode >= 400) {
+            reject(new Error(parsed.error?.message || "Stripe request failed."));
+            return;
+          }
+          resolve(parsed);
+        });
+      }
+    );
+    request.on("error", reject);
     request.end();
   });
 }
@@ -873,6 +920,39 @@ function applyStripeCheckoutCompletion(db, sessionObject) {
   return true;
 }
 
+function planFromStripeSubscription(subscription) {
+  const metadataPlan = subscription.metadata?.plan;
+  if (planEntitlements[metadataPlan]) return metadataPlan;
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  if (priceId && priceId === process.env.STRIPE_STUDIO_PRICE_ID) return "studio";
+  if (priceId && priceId === process.env.STRIPE_PRO_PRICE_ID) return "pro";
+  return "pro";
+}
+
+function applyStripeSubscriptionUpdate(db, subscription) {
+  const userId = subscription.metadata?.userId;
+  const user = db.users.find((item) => item.id === userId || item.billing?.subscriptionId === subscription.id || item.billing?.customerId === subscription.customer);
+  if (!user) return false;
+  const plan = planFromStripeSubscription(subscription);
+  const activeStatuses = new Set(["active", "trialing"]);
+  const inactiveStatuses = new Set(["canceled", "unpaid", "incomplete_expired"]);
+  user.plan = activeStatuses.has(subscription.status) ? plan : inactiveStatuses.has(subscription.status) ? "free" : user.plan || "free";
+  user.billing = {
+    ...(user.billing || {}),
+    provider: "stripe",
+    mode: "live",
+    checkoutStatus: subscription.status,
+    customerId: subscription.customer || user.billing?.customerId || null,
+    subscriptionId: subscription.id,
+    interval: subscription.metadata?.interval || user.billing?.interval || "monthly",
+    currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : user.billing?.currentPeriodEnd || null,
+    cancelledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+    upgradedAt: user.billing?.upgradedAt || new Date().toISOString()
+  };
+  addAudit(db, user, "billing.subscription_updated", { subscriptionId: subscription.id, status: subscription.status, plan: user.plan });
+  return true;
+}
+
 async function handleApi(req, res, url) {
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
@@ -905,14 +985,16 @@ async function handleApi(req, res, url) {
       applyStripeCheckoutCompletion(db, event.data.object);
       writeDb(db);
     }
-    if (event.type === "customer.subscription.deleted") {
-      const subscription = event.data.object;
-      const userId = subscription.metadata?.userId;
-      const user = db.users.find((item) => item.id === userId || item.billing?.subscriptionId === subscription.id);
+    if (["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"].includes(event.type)) {
+      applyStripeSubscriptionUpdate(db, event.data.object);
+      writeDb(db);
+    }
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object;
+      const user = db.users.find((item) => item.billing?.customerId === invoice.customer || item.billing?.subscriptionId === invoice.subscription);
       if (user) {
-        user.plan = "free";
-        user.billing = { ...(user.billing || {}), checkoutStatus: "cancelled", cancelledAt: new Date().toISOString() };
-        addAudit(db, user, "billing.subscription_deleted", { subscriptionId: subscription.id });
+        user.billing = { ...(user.billing || {}), checkoutStatus: "payment_failed", lastPaymentFailedAt: new Date().toISOString() };
+        addAudit(db, user, "billing.payment_failed", { invoiceId: invoice.id, subscriptionId: invoice.subscription });
         writeDb(db);
       }
     }
@@ -1355,6 +1437,44 @@ async function handleApi(req, res, url) {
         return_url: `${appUrl}/?billing=portal-return`
       });
       sendJson(res, 200, { portalUrl: portalSession.url, mode: "stripe" });
+      return;
+    } catch (error) {
+      sendJson(res, 502, { error: error.message });
+      return;
+    }
+  }
+
+  if (url.pathname === "/api/billing/confirm" && req.method === "POST") {
+    if (!session) {
+      sendJson(res, 401, { error: "Log in first." });
+      return;
+    }
+    const body = await readBody(req);
+    const checkoutSessionId = String(body.sessionId || "").trim();
+    if (!checkoutSessionId) {
+      sendJson(res, 400, { error: "Checkout session ID is required." });
+      return;
+    }
+    if (!process.env.STRIPE_SECRET_KEY) {
+      sendJson(res, 200, { user: publicUser(session.user), mode: "prototype" });
+      return;
+    }
+    try {
+      const checkoutSession = await stripeGet(`/v1/checkout/sessions/${encodeURIComponent(checkoutSessionId)}`);
+      if (checkoutSession.payment_status === "paid" || checkoutSession.status === "complete") {
+        applyStripeCheckoutCompletion(db, checkoutSession);
+        if (checkoutSession.subscription) {
+          try {
+            const subscription = await stripeGet(`/v1/subscriptions/${encodeURIComponent(checkoutSession.subscription)}`);
+            applyStripeSubscriptionUpdate(db, subscription);
+          } catch {
+            // The checkout session itself is enough to unlock the account; subscription webhooks will fill details.
+          }
+        }
+        writeDb(db);
+      }
+      const updatedUser = db.users.find((item) => item.id === session.user.id) || session.user;
+      sendJson(res, 200, { user: publicUser(updatedUser), mode: "stripe", checkoutStatus: checkoutSession.status });
       return;
     } catch (error) {
       sendJson(res, 502, { error: error.message });

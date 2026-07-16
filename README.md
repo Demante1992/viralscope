@@ -94,7 +94,9 @@ https://your-netlify-site-or-domain.com/api/oauth/callback/kick
 
 - `GET /api/me` returns the logged-in user plus workspace metadata.
 - `GET /api/billing/plans` returns Free, Pro, and Studio entitlements.
-- `POST /api/billing/upgrade` simulates Stripe plan activation and records billing metadata.
+- `POST /api/billing/upgrade` creates a live Stripe Checkout Session when Stripe env vars are configured, or falls back to prototype activation when they are not.
+- `POST /api/billing/confirm` confirms a returned Stripe Checkout Session and refreshes the user's plan.
+- `POST /api/billing/portal` opens the Stripe customer portal once the user has a live Stripe customer.
 - `GET /api/workspace` and `POST /api/workspace` provide workspace settings persistence.
 - `GET /api/launch/readiness` powers the Launch Center with backend, Stripe, OAuth, database, and legal readiness checks.
 
@@ -176,6 +178,15 @@ STRIPE_STUDIO_PRICE_ID=
 
 Create recurring Stripe Prices for Pro and Studio, then map their Price IDs into the env vars above. The backend creates Stripe Checkout Sessions in subscription mode when all required Stripe values are configured. If any Stripe value is missing, the app safely falls back to prototype upgrade mode.
 
+Checkout return handling:
+
+```text
+https://your-production-domain.com/?checkout=success&session_id={CHECKOUT_SESSION_ID}
+https://your-production-domain.com/?checkout=cancelled
+```
+
+On return, the browser calls `POST /api/billing/confirm` so the account can update immediately even if the webhook is still in flight.
+
 Register this webhook endpoint in Stripe:
 
 ```text
@@ -185,6 +196,8 @@ https://your-production-domain.com/api/stripe/webhook
 Handled events:
 
 - `checkout.session.completed` unlocks the selected plan from Stripe metadata.
+- `customer.subscription.created` and `customer.subscription.updated` reconcile active/trialing plans from Stripe subscription status and Price IDs.
 - `customer.subscription.deleted` moves the user back to Free.
+- `invoice.payment_failed` marks billing as `payment_failed` for account follow-up.
 
-The customer portal endpoint is available at `POST /api/billing/portal` once a Stripe customer exists.
+The customer portal endpoint is available at `POST /api/billing/portal` once a Stripe customer exists. Pro users reach it through Billing settings.
