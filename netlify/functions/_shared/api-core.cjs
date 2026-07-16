@@ -1006,11 +1006,12 @@ async function handleApi(req, res, url) {
       connections: [],
       createdAt: new Date().toISOString()
     };
+    const workspace = defaultWorkspace(user);
     db.users.push(user);
-    db.workspaces.push(defaultWorkspace(user));
+    db.workspaces.push(workspace);
     addAudit(db, user, "auth.signup", { email });
     createSession(res, db, user);
-    sendJson(res, 201, { user: publicUser(user) });
+    sendJson(res, 201, { user: publicUser(user), workspace: publicWorkspace(workspace) });
     return;
   }
 
@@ -1022,9 +1023,14 @@ async function handleApi(req, res, url) {
       sendJson(res, 401, { error: "Email or password did not match." });
       return;
     }
+    let workspace = db.workspaces.find((item) => item.id === user.workspaceId);
+    if (!workspace) {
+      workspace = defaultWorkspace(user);
+      db.workspaces.push(workspace);
+    }
     addAudit(db, user, "auth.login", { email });
     createSession(res, db, user);
-    sendJson(res, 200, { user: publicUser(user) });
+    sendJson(res, 200, { user: publicUser(user), workspace: publicWorkspace(workspace) });
     return;
   }
 

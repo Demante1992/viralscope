@@ -2810,6 +2810,19 @@ function connectOAuthDemoFallback() {
   showToast("Website tracking uses a URL, pixel, or server event instead of OAuth.");
 }
 
+async function applyAuthResult(data, message) {
+  currentUser = data.user;
+  currentWorkspace = data.workspace || currentWorkspace;
+  urls = (currentWorkspace?.trackedUrls || []).map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" }));
+  metricsSummary = null;
+  applyWorkspaceSourceState();
+  updateAccountUi();
+  await refreshMetricsSummary();
+  renderAll();
+  $("#authDialog").close();
+  showToast(message);
+}
+
 async function submitAuth(event) {
   event.preventDefault();
   const payload = {
@@ -2822,17 +2835,22 @@ async function submitAuth(event) {
       method: "POST",
       body: JSON.stringify(payload)
     });
-    currentUser = data.user;
-    currentWorkspace = data.workspace || currentWorkspace;
-    urls = (currentWorkspace?.trackedUrls || []).map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" }));
-    metricsSummary = null;
-    applyWorkspaceSourceState();
-    updateAccountUi();
-    await refreshMetricsSummary();
-    renderAll();
-    $("#authDialog").close();
-    showToast(authMode === "signup" ? "Free account created." : "Logged in.");
+    await applyAuthResult(data, authMode === "signup" ? "Free account created." : "Logged in.");
   } catch (error) {
+    if (authMode === "signup" && error.status === 409) {
+      try {
+        const data = await apiRequest("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        await applyAuthResult(data, "Account already existed, so you were logged in.");
+        return;
+      } catch {
+        openAuthDialog("login");
+        showToast("That email already exists. Log in with your password.");
+        return;
+      }
+    }
     showToast(error.message);
   }
 }
