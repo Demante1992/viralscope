@@ -2804,6 +2804,34 @@ select {
   gap: 7px;
 }
 
+.setup-callout {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(101, 246, 255, 0.28);
+  border-radius: 6px;
+  background: rgba(101, 246, 255, 0.08);
+}
+
+.setup-callout strong {
+  font-size: 0.75rem;
+  color: var(--teal);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.setup-callout code {
+  display: block;
+  max-width: 100%;
+  padding: 9px 10px;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.24);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -3076,7 +3104,8 @@ select {
   right: 20px;
   bottom: 20px;
   transform: translateY(18px);
-  max-width: min(420px, calc(100vw - 40px));
+  width: max-content;
+  max-width: min(560px, calc(100vw - 40px));
   padding: 14px 16px;
   color: #0d1114;
   font-weight: 800;
@@ -3087,6 +3116,9 @@ select {
   transition:
     opacity 180ms ease,
     transform 180ms ease;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  z-index: 90;
 }
 
 .toast.show {

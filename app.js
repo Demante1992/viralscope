@@ -913,7 +913,29 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
   window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 2600);
+  const duration = String(message).length > 120 ? 5200 : 2600;
+  showToast.timer = window.setTimeout(() => toast.classList.remove("show"), duration);
+}
+
+function renderOAuthSetupRequired(errorData = {}) {
+  const provider = oauthProviders[selectedPlatform];
+  const required = errorData.requiredEnv || [];
+  $("#oauthPreview").innerHTML = `
+    <header>
+      <div>
+        <p class="eyebrow">${provider.method}</p>
+        <h4>${selectedPlatform} setup required</h4>
+      </div>
+      <span class="data-pill">Needs keys</span>
+    </header>
+    <p>Add the provider credentials in Netlify, redeploy, then try OAuth again.</p>
+    <div class="setup-callout">
+      <strong>Redirect URI</strong>
+      <code>${errorData.redirectUri || "Set APP_URL first"}</code>
+      <strong>Netlify variables</strong>
+      <code>${required.length ? required.join(" + ") : "Provider client ID + secret"}</code>
+    </div>
+  `;
 }
 
 function addActivity(type, title, status = "live") {
@@ -2806,8 +2828,8 @@ async function connectOAuth(event) {
     }
     if (error.status === 401) openAuthDialog("login");
     if (error.data?.setupRequired) {
-      const required = error.data.requiredEnv?.join(" + ") || "provider OAuth variables";
-      showToast(`${error.message} Redirect URI: ${error.data.redirectUri}. Required: ${required}.`);
+      renderOAuthSetupRequired(error.data);
+      showToast(`${selectedPlatform} OAuth needs Netlify credentials first.`);
       return;
     }
     showToast(error.message);
