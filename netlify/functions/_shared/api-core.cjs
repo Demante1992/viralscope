@@ -557,7 +557,8 @@ function createSession(res, db, user) {
   const sid = crypto.randomBytes(24).toString("hex");
   db.sessions[sid] = { userId: user.id, expiresAt: Date.now() + sessionTtlMs };
   writeDb(db);
-  res.setHeader("Set-Cookie", `vs_session=${encodeURIComponent(sid)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(sessionTtlMs / 1000)}`);
+  const secure = appUrl.startsWith("https://") ? "; Secure" : "";
+  res.setHeader("Set-Cookie", `vs_session=${encodeURIComponent(sid)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(sessionTtlMs / 1000)}${secure}`);
   return sid;
 }
 
@@ -1478,8 +1479,20 @@ async function handleApi(req, res, url) {
       sendJson(res, 400, { error: "Use a valid email and a password with at least 8 characters." });
       return;
     }
-    if (db.users.some((user) => user.email === email)) {
-      sendJson(res, 409, { error: "An account already exists for that email." });
+    const existingUser = db.users.find((user) => user.email === email);
+    if (existingUser) {
+      if (!verifyPassword(password, existingUser.passwordHash)) {
+        sendJson(res, 409, { error: "An account already exists for that email. Log in with the original password." });
+        return;
+      }
+      let workspace = db.workspaces.find((item) => item.id === existingUser.workspaceId);
+      if (!workspace) {
+        workspace = defaultWorkspace(existingUser);
+        db.workspaces.push(workspace);
+      }
+      addAudit(db, existingUser, "auth.signup_existing_recovered", { email });
+      const sessionToken = createSession(res, db, existingUser);
+      sendJson(res, 200, { user: publicUser(existingUser), workspace: publicWorkspace(workspace), sessionToken, accountRecovered: true });
       return;
     }
     const user = {

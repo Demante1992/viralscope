@@ -3427,7 +3427,7 @@ async function submitAuth(event) {
       method: "POST",
       body: JSON.stringify(payload)
     });
-    await applyAuthResult(data, authMode === "signup" ? "Free account created." : "Logged in.");
+    await applyAuthResult(data, data.accountRecovered ? "Existing account restored." : authMode === "signup" ? "Free account created." : "Logged in.");
   } catch (error) {
     if (authMode === "signup" && error.status === 409) {
       try {
