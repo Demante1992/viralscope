@@ -534,8 +534,12 @@ function redirect(res, location) {
   res.end();
 }
 
+function envValue(name) {
+  return String(process.env[name] || "").trim();
+}
+
 function stripeConfigured(plan) {
-  return Boolean(process.env.STRIPE_SECRET_KEY && process.env[stripePlanPriceEnv[plan]]);
+  return Boolean(envValue("STRIPE_SECRET_KEY") && envValue(stripePlanPriceEnv[plan]));
 }
 
 function stripeRequest(endpoint, params) {
@@ -547,7 +551,7 @@ function stripeRequest(endpoint, params) {
         path: endpoint,
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+          Authorization: `Bearer ${envValue("STRIPE_SECRET_KEY")}`,
           "Content-Type": "application/x-www-form-urlencoded",
           "Content-Length": Buffer.byteLength(body)
         }
@@ -581,7 +585,7 @@ function stripeGet(endpoint) {
         path: endpoint,
         method: "GET",
         headers: {
-          Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`
+          Authorization: `Bearer ${envValue("STRIPE_SECRET_KEY")}`
         }
       },
       (response) => {
@@ -592,7 +596,8 @@ function stripeGet(endpoint) {
         response.on("end", () => {
           const parsed = data ? JSON.parse(data) : {};
           if (response.statusCode >= 400) {
-            reject(new Error(parsed.error?.message || "Stripe request failed."));
+            const message = parsed.error?.message || "Stripe request failed.";
+            reject(new Error(message.toLowerCase().includes("api key") ? `${message} Check STRIPE_SECRET_KEY in Netlify.` : message));
             return;
           }
           resolve(parsed);
@@ -882,7 +887,7 @@ function saveAiRun(db, user, payload) {
 }
 
 function verifyStripeSignature(rawBody, signatureHeader) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secret = envValue("STRIPE_WEBHOOK_SECRET");
   if (!secret || !signatureHeader) return false;
   const parts = Object.fromEntries(signatureHeader.split(",").map((part) => {
     const [key, value] = part.split("=");
@@ -924,8 +929,8 @@ function planFromStripeSubscription(subscription) {
   const metadataPlan = subscription.metadata?.plan;
   if (planEntitlements[metadataPlan]) return metadataPlan;
   const priceId = subscription.items?.data?.[0]?.price?.id;
-  if (priceId && priceId === process.env.STRIPE_STUDIO_PRICE_ID) return "studio";
-  if (priceId && priceId === process.env.STRIPE_PRO_PRICE_ID) return "pro";
+  if (priceId && priceId === envValue("STRIPE_STUDIO_PRICE_ID")) return "studio";
+  if (priceId && priceId === envValue("STRIPE_PRO_PRICE_ID")) return "pro";
   return "pro";
 }
 
@@ -1378,7 +1383,7 @@ async function handleApi(req, res, url) {
           cancel_url: `${appUrl}/?checkout=cancelled`,
           customer_email: session.user.email,
           client_reference_id: session.user.id,
-          "line_items[0][price]": process.env[stripePlanPriceEnv[plan]],
+          "line_items[0][price]": envValue(stripePlanPriceEnv[plan]),
           "line_items[0][quantity]": "1",
           "metadata[userId]": session.user.id,
           "metadata[plan]": plan,
@@ -1427,7 +1432,7 @@ async function handleApi(req, res, url) {
       return;
     }
     const customerId = session.user.billing?.customerId;
-    if (!process.env.STRIPE_SECRET_KEY || !customerId) {
+    if (!envValue("STRIPE_SECRET_KEY") || !customerId) {
       sendJson(res, 200, { mode: "prototype", message: "Stripe customer portal needs a live Stripe customer." });
       return;
     }
@@ -1455,7 +1460,7 @@ async function handleApi(req, res, url) {
       sendJson(res, 400, { error: "Checkout session ID is required." });
       return;
     }
-    if (!process.env.STRIPE_SECRET_KEY) {
+    if (!envValue("STRIPE_SECRET_KEY")) {
       sendJson(res, 200, { user: publicUser(session.user), mode: "prototype" });
       return;
     }
@@ -1495,13 +1500,13 @@ async function handleApi(req, res, url) {
       };
     });
     const stripeReady = Boolean(
-      process.env.STRIPE_SECRET_KEY &&
-      process.env.STRIPE_WEBHOOK_SECRET &&
-      process.env.STRIPE_PRO_PRICE_ID &&
-      process.env.STRIPE_STUDIO_PRICE_ID
+      envValue("STRIPE_SECRET_KEY") &&
+      envValue("STRIPE_WEBHOOK_SECRET") &&
+      envValue("STRIPE_PRO_PRICE_ID") &&
+      envValue("STRIPE_STUDIO_PRICE_ID")
     );
     const databaseMode = isNetlifyFunction ? "netlify-blobs" : path.basename(dbPath) === "db.json" ? "local-json" : "external";
-    const tokenEncryptionReady = Boolean(process.env.TOKEN_ENCRYPTION_KEY);
+    const tokenEncryptionReady = Boolean(envValue("TOKEN_ENCRYPTION_KEY"));
     const aiReady = Boolean(process.env.OPENAI_API_KEY);
     const checks = [
       { area: "Product prototype", score: 94, status: "Ready", detail: "Core UI, tabs, charts, Pro gating, onboarding, launch center, alerts, reports, and AI surfaces are demo-ready." },
@@ -1521,7 +1526,7 @@ async function handleApi(req, res, url) {
         mode: stripeReady ? "configured" : "prototype",
         requiredEnv: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PRO_PRICE_ID", "STRIPE_STUDIO_PRICE_ID"].map((name) => ({
           name,
-          configured: Boolean(process.env[name])
+          configured: Boolean(envValue(name))
         }))
       },
       database: { mode: databaseMode, path: isNetlifyFunction ? `${blobStoreName}/${blobDbKey}` : "data/db.json" },
