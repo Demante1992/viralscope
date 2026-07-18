@@ -501,6 +501,7 @@ let currentWorkspace = null;
 let metricsSummary = null;
 let latestAiRun = null;
 let sessionToken = window.localStorage.getItem("viralscopeSessionToken") || "";
+const sessionSnapshotKey = "viralscopeSessionSnapshot";
 let authMode = "login";
 let selectedPlan = "pro";
 let billingInterval = "monthly";
@@ -924,6 +925,38 @@ async function apiRequest(path, options = {}) {
     throw error;
   }
   return data;
+}
+
+function saveSessionSnapshot() {
+  if (!currentUser) return;
+  const snapshot = {
+    user: currentUser,
+    workspace: currentWorkspace,
+    savedAt: new Date().toISOString()
+  };
+  window.localStorage.setItem(sessionSnapshotKey, JSON.stringify(snapshot));
+}
+
+function loadSessionSnapshot() {
+  try {
+    const snapshot = JSON.parse(window.localStorage.getItem(sessionSnapshotKey) || "null");
+    if (!snapshot?.user) return null;
+    return snapshot;
+  } catch {
+    return null;
+  }
+}
+
+function hydrateSessionSnapshot() {
+  const snapshot = loadSessionSnapshot();
+  if (!snapshot) return false;
+  currentUser = snapshot.user;
+  currentWorkspace = snapshot.workspace || null;
+  urls = (currentWorkspace?.trackedUrls || []).map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" }));
+  metricsSummary = null;
+  applyWorkspaceSourceState();
+  updateAccountUi();
+  return true;
 }
 
 function formatBadge(platform) {
@@ -1575,10 +1608,15 @@ async function refreshSession() {
     updateAccountUi();
     urls = (currentWorkspace?.trackedUrls || []).map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" }));
     applyWorkspaceSourceState();
+    saveSessionSnapshot();
     await refreshTrackedUrls();
     await refreshMetricsSummary();
     renderAll();
   } catch {
+    if (hydrateSessionSnapshot()) {
+      renderAll();
+      return;
+    }
     currentUser = null;
     currentWorkspace = null;
     metricsSummary = null;
@@ -3412,6 +3450,7 @@ async function applyAuthResult(data, message) {
   metricsSummary = null;
   applyWorkspaceSourceState();
   updateAccountUi();
+  saveSessionSnapshot();
   await refreshMetricsSummary();
   renderAll();
   $("#authDialog").close();
@@ -3754,6 +3793,7 @@ function handleBillingReturn() {
           if (data.user) currentUser = data.user;
           if (data.workspace) currentWorkspace = data.workspace;
           updateAccountUi();
+          saveSessionSnapshot();
           renderAll();
           showToast(currentUser?.plan === "pro" || currentUser?.plan === "studio" ? "Paid plan confirmed." : "Checkout is still processing.");
         })
@@ -3785,6 +3825,7 @@ function handleBillingReturn() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   renderNavIcons();
+  hydrateSessionSnapshot();
   renderAll();
   await refreshSession();
   await refreshLaunchReadiness();
