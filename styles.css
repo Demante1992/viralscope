@@ -2859,7 +2859,7 @@ select {
   border: 1px solid var(--line);
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.24);
-  white-space: normal;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 

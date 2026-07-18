@@ -943,6 +943,13 @@ function showToast(message) {
 function renderOAuthSetupRequired(errorData = {}) {
   const provider = oauthProviders[selectedPlatform];
   const required = errorData.requiredEnv || [];
+  const isMeta = selectedPlatform === "Instagram" || selectedPlatform === "Facebook";
+  const redirectLines = isMeta
+    ? [
+        errorData.redirectUri,
+        errorData.redirectUri?.replace(/\/(instagram|facebook)$/, selectedPlatform === "Instagram" ? "/facebook" : "/instagram")
+      ].filter(Boolean)
+    : [errorData.redirectUri || "Set APP_URL first"];
   $("#oauthPreview").innerHTML = `
     <header>
       <div>
@@ -951,12 +958,13 @@ function renderOAuthSetupRequired(errorData = {}) {
       </div>
       <span class="data-pill">Needs keys</span>
     </header>
-    <p>Add the provider credentials in Netlify, redeploy, then try OAuth again.</p>
+    <p>${isMeta ? "Add one Meta app's credentials in Netlify. The same app can connect Instagram Creator/Business accounts and Facebook Pages." : "Add the provider credentials in Netlify, redeploy, then try OAuth again."}</p>
     <div class="setup-callout">
-      <strong>Redirect URI</strong>
-      <code>${errorData.redirectUri || "Set APP_URL first"}</code>
+      <strong>${redirectLines.length > 1 ? "Redirect URIs" : "Redirect URI"}</strong>
+      <code>${redirectLines.join("\n")}</code>
       <strong>Netlify variables</strong>
       <code>${required.length ? required.join(" + ") : "Provider client ID + secret"}</code>
+      ${isMeta ? "<strong>Meta permissions</strong><code>pages_show_list + pages_read_engagement + instagram_basic + instagram_manage_insights</code>" : ""}
     </div>
   `;
 }
@@ -3495,20 +3503,27 @@ async function simulateRefresh() {
   addActivity("Sync", "Started cross-platform metric refresh", "live");
   if (currentUser && currentUser.plan !== "free") {
     try {
-      const data = await apiRequest("/api/sync/youtube", { method: "POST", body: "{}" });
-      metricsSummary = data.summary;
-      if (data.user) currentUser = data.user;
+      const providerSlugs = (currentUser.oauthStatus || [])
+        .filter((status) => status.tokenStatus !== "reconnect_required" && status.tokenStatus !== "exchange_failed")
+        .map((status) => status.provider);
+      const syncTargets = providerSlugs.length ? providerSlugs : ["youtube"];
+      let data = null;
+      for (const slug of syncTargets) {
+        data = await apiRequest(`/api/sync/${slug}`, { method: "POST", body: "{}" });
+      }
+      metricsSummary = data?.summary;
+      if (data?.user) currentUser = data.user;
       applyMetricsSummary();
       renderAll();
-      setLiveOps("YouTube sync complete", `Saved a ${data.syncRun.mode === "oauth" ? "live OAuth" : "demo"} metric snapshot for ${data.snapshot.profile?.title || "YouTube"}.`, "Metrics saved");
-      addActivity("Sync", `YouTube ${data.syncRun.mode === "oauth" ? "OAuth" : "demo"} snapshot saved`, "live");
+      setLiveOps("Platform sync complete", `Saved ${syncTargets.length} metric snapshot${syncTargets.length === 1 ? "" : "s"} across connected OAuth providers.`, "Metrics saved");
+      addActivity("Sync", `${syncTargets.map((slug) => slug[0].toUpperCase() + slug.slice(1)).join(", ")} snapshot${syncTargets.length === 1 ? "" : "s"} saved`, "live");
       setButtonWorking(button, false);
-      showToast("YouTube metrics synced into the backend pipeline.");
+      showToast("Connected platform metrics synced into the backend pipeline.");
       return;
     } catch (error) {
       if (error.status === 402) {
         setButtonWorking(button, false);
-        requireProFeature("YouTube metric sync");
+        requireProFeature("platform metric sync");
         return;
       }
       addActivity("Sync", `Backend sync fell back to demo: ${error.message}`, "watch");

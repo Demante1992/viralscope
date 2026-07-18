@@ -102,7 +102,7 @@ https://your-netlify-site-or-domain.com/api/oauth/callback/kick
 
 ## Data pipeline APIs
 
-- `POST /api/sync/youtube` stores a YouTube metric snapshot. With live OAuth tokens it uses YouTube APIs; without tokens it creates a realistic demo snapshot for local testing.
+- `POST /api/sync/:provider` stores a metric snapshot for connected OAuth providers. YouTube, Instagram, and Facebook now fetch provider-specific profiles/recent content. YouTube still falls back to a realistic demo snapshot for local testing when no token exists.
 - `GET /api/metrics/summary` returns latest platform snapshots, totals, display values, and recent history for the workspace.
 - `GET /api/urls` lists tracked URLs for the current workspace.
 - `POST /api/urls` creates a tracked URL and enforces plan limits.
@@ -142,7 +142,9 @@ http://localhost:4173/api/oauth/callback/twitch
 http://localhost:4173/api/oauth/callback/kick
 ```
 
-YouTube is the first production-hardened provider:
+YouTube and Meta are the first production-hardened providers.
+
+YouTube:
 
 - Uses Google web-server OAuth.
 - Requests `access_type=offline` so refresh tokens can be issued.
@@ -185,6 +187,51 @@ http://localhost:4173/api/oauth/callback/youtube
 ```
 
 Other providers share the same start/callback structure and can be hardened next with provider-specific token exchange, profile fetch, token refresh, and app review requirements.
+
+Meta Instagram/Facebook OAuth:
+
+- Uses one Meta app for both Instagram and Facebook.
+- Requests `pages_show_list`, `pages_read_engagement`, `instagram_basic`, and `instagram_manage_insights` for Instagram.
+- Requests `pages_show_list`, `pages_read_engagement`, and `read_insights` for Facebook Pages.
+- Exchanges authorization codes server-side.
+- Attempts to exchange Meta's short-lived user token for a longer-lived user token.
+- Fetches managed Pages from Graph API.
+- For Instagram, finds the linked Instagram Business/Creator account from the selected Page.
+- Stores profile metadata, recent Instagram media or Facebook posts, and an immediate metric snapshot.
+- Requires an Instagram Creator/Business account connected to a Facebook Page for Instagram Graph data.
+
+Before using live Meta OAuth on Netlify:
+
+1. Create or open a Meta app in Meta for Developers.
+2. Add Facebook Login for Business or Facebook Login, depending on your app configuration.
+3. Add these valid OAuth redirect URIs:
+
+```text
+https://useviralscope.netlify.app/api/oauth/callback/instagram
+https://useviralscope.netlify.app/api/oauth/callback/facebook
+```
+
+4. Add yourself as a tester/admin while the Meta app is in development mode.
+5. Make sure the Facebook account you test with manages the Page connected to the Instagram Creator/Business account.
+6. Set these Netlify environment variables:
+
+```text
+APP_URL=https://useviralscope.netlify.app
+META_CLIENT_ID=
+META_CLIENT_SECRET=
+TOKEN_ENCRYPTION_KEY=
+```
+
+7. Redeploy the site, log into a Pro ViralScope account, then connect Instagram or Facebook.
+
+For local Meta OAuth testing, also add:
+
+```text
+http://localhost:4173/api/oauth/callback/instagram
+http://localhost:4173/api/oauth/callback/facebook
+```
+
+Meta app review is required before real non-tester users can grant production permissions.
 
 ## Real Stripe
 

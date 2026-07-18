@@ -69,6 +69,7 @@ const providerConfig = {
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
     clientIdEnv: "META_CLIENT_ID",
     clientSecretEnv: "META_CLIENT_SECRET",
+    scopeSeparator: ",",
     scopes: ["instagram_basic", "instagram_manage_insights", "pages_show_list", "pages_read_engagement"]
   },
   facebook: {
@@ -77,6 +78,7 @@ const providerConfig = {
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
     clientIdEnv: "META_CLIENT_ID",
     clientSecretEnv: "META_CLIENT_SECRET",
+    scopeSeparator: ",",
     scopes: ["pages_show_list", "pages_read_engagement", "read_insights"]
   },
   tiktok: {
@@ -703,6 +705,14 @@ function postForm(urlString, params, headers = {}) {
 
 async function exchangeOAuthCode(provider, slug, code, redirectUri) {
   const credentials = providerCredentials(provider);
+  if (slug === "instagram" || slug === "facebook") {
+    const url = new URL(provider.tokenUrl);
+    url.searchParams.set("client_id", credentials.clientId);
+    url.searchParams.set("client_secret", credentials.clientSecret);
+    url.searchParams.set("code", code);
+    url.searchParams.set("redirect_uri", redirectUri);
+    return httpsJson(url.toString());
+  }
   const params = {
     client_id: credentials.clientId,
     client_secret: credentials.clientSecret,
@@ -715,6 +725,17 @@ async function exchangeOAuthCode(provider, slug, code, redirectUri) {
     delete params.client_id;
   }
   return postForm(provider.tokenUrl, params);
+}
+
+async function extendMetaAccessToken(provider, accessToken) {
+  const credentials = providerCredentials(provider);
+  if (!accessToken || !credentials.clientId || !credentials.clientSecret) return null;
+  const url = new URL("https://graph.facebook.com/v21.0/oauth/access_token");
+  url.searchParams.set("grant_type", "fb_exchange_token");
+  url.searchParams.set("client_id", credentials.clientId);
+  url.searchParams.set("client_secret", credentials.clientSecret);
+  url.searchParams.set("fb_exchange_token", accessToken);
+  return httpsJson(url.toString());
 }
 
 async function refreshOAuthAccessToken(provider, slug, encryptedRefreshToken) {
@@ -872,6 +893,147 @@ async function fetchYouTubeAnalyticsPreview(accessToken) {
   }
 }
 
+function graphUrl(pathname, accessToken, params = {}) {
+  const url = new URL(`https://graph.facebook.com/v21.0/${pathname.replace(/^\//, "")}`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value != null) url.searchParams.set(key, value);
+  });
+  url.searchParams.set("access_token", accessToken);
+  return url.toString();
+}
+
+async function fetchMetaPages(accessToken) {
+  const fields = [
+    "id",
+    "name",
+    "access_token",
+    "fan_count",
+    "followers_count",
+    "link",
+    "picture{url}",
+    "instagram_business_account{id,username,name,profile_picture_url,followers_count,media_count}"
+  ].join(",");
+  const data = await httpsJson(graphUrl("/me/accounts", accessToken, { fields, limit: 25 }));
+  return data.data || [];
+}
+
+function metaPageProfile(page) {
+  if (!page) return null;
+  return {
+    id: page.id,
+    title: page.name || "Facebook Page",
+    handle: page.link || null,
+    thumbnail: page.picture?.data?.url || null,
+    followers: numberOrNull(page.followers_count || page.fan_count),
+    likes: numberOrNull(page.fan_count)
+  };
+}
+
+function instagramProfileFromPage(page) {
+  const account = page?.instagram_business_account;
+  if (!account) return null;
+  return {
+    id: account.id,
+    title: account.name || account.username || "Instagram account",
+    handle: account.username ? `@${account.username}` : null,
+    thumbnail: account.profile_picture_url || null,
+    followers: numberOrNull(account.followers_count),
+    mediaCount: numberOrNull(account.media_count),
+    linkedPageId: page.id,
+    linkedPageName: page.name || null
+  };
+}
+
+async function fetchInstagramRecentMedia(pageAccessToken, profile) {
+  if (!profile?.id || !pageAccessToken) return [];
+  const fields = "id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count,permalink";
+  const data = await httpsJson(graphUrl(`/${profile.id}/media`, pageAccessToken, { fields, limit: 8 }));
+  return (data.data || []).map((item) => ({
+    id: item.id,
+    title: item.caption ? item.caption.split(/\s+/).slice(0, 12).join(" ") : `${item.media_type || "Instagram"} post`,
+    publishedAt: item.timestamp || null,
+    thumbnail: item.thumbnail_url || item.media_url || null,
+    type: item.media_type === "VIDEO" ? "Reel" : item.media_type || "Post",
+    url: item.permalink || null,
+    likes: numberOrNull(item.like_count),
+    comments: numberOrNull(item.comments_count)
+  }));
+}
+
+async function fetchFacebookRecentPosts(pageAccessToken, page) {
+  if (!page?.id || !pageAccessToken) return [];
+  const fields = "id,message,created_time,permalink_url,shares,likes.summary(true),comments.summary(true)";
+  const data = await httpsJson(graphUrl(`/${page.id}/posts`, pageAccessToken, { fields, limit: 8 }));
+  return (data.data || []).map((item) => ({
+    id: item.id,
+    title: item.message ? item.message.split(/\s+/).slice(0, 14).join(" ") : "Facebook Page post",
+    publishedAt: item.created_time || null,
+    type: "Post",
+    url: item.permalink_url || null,
+    likes: numberOrNull(item.likes?.summary?.total_count),
+    comments: numberOrNull(item.comments?.summary?.total_count),
+    shares: numberOrNull(item.shares?.count)
+  }));
+}
+
+async function buildInstagramProviderProfile(accessToken) {
+  const pages = await fetchMetaPages(accessToken);
+  const page = pages.find((item) => item.instagram_business_account) || pages[0];
+  const profile = instagramProfileFromPage(page);
+  const latestContent = profile ? await fetchInstagramRecentMedia(page.access_token || accessToken, profile) : [];
+  return {
+    profile,
+    analyticsPreview: {
+      range: "Meta Graph connection",
+      columns: ["followers", "media_count", "latest_media"],
+      totals: [profile?.followers || 0, profile?.mediaCount || 0, latestContent.length],
+      linkedPage: page?.name || null
+    },
+    latestContent
+  };
+}
+
+async function buildFacebookProviderProfile(accessToken) {
+  const pages = await fetchMetaPages(accessToken);
+  const page = pages[0];
+  const profile = metaPageProfile(page);
+  const latestContent = profile ? await fetchFacebookRecentPosts(page.access_token || accessToken, page) : [];
+  return {
+    profile,
+    analyticsPreview: {
+      range: "Meta Graph connection",
+      columns: ["followers", "page_likes", "latest_posts"],
+      totals: [profile?.followers || 0, profile?.likes || 0, latestContent.length]
+    },
+    latestContent
+  };
+}
+
+function metricsFromProviderData(slug, providerData = {}) {
+  const profile = providerData.profile || {};
+  const latestContent = providerData.latestContent || [];
+  const contentTotals = latestContent.reduce(
+    (sum, item) => {
+      sum.likes += numberOrNull(item.likes) || 0;
+      sum.comments += numberOrNull(item.comments) || 0;
+      sum.shares += numberOrNull(item.shares) || 0;
+      sum.views += numberOrNull(item.views) || 0;
+      return sum;
+    },
+    { likes: 0, comments: 0, shares: 0, views: 0 }
+  );
+  return {
+    views: numberOrNull(profile.views) || contentTotals.views,
+    subscribers: slug === "youtube" ? numberOrNull(profile.subscribers) : null,
+    followers: slug === "youtube" ? null : numberOrNull(profile.followers),
+    likes: contentTotals.likes || numberOrNull(profile.likes),
+    comments: contentTotals.comments,
+    shares: contentTotals.shares,
+    clicks: null,
+    revenue: null
+  };
+}
+
 async function buildProviderProfile(slug, accessToken) {
   if (slug === "youtube") {
     const profile = await fetchYouTubeProfile(accessToken);
@@ -888,6 +1050,8 @@ async function buildProviderProfile(slug, accessToken) {
     }));
     return { profile, analyticsPreview, latestContent, topVideoAnalytics };
   }
+  if (slug === "instagram") return buildInstagramProviderProfile(accessToken);
+  if (slug === "facebook") return buildFacebookProviderProfile(accessToken);
   return { profile: null, analyticsPreview: null, latestContent: [] };
 }
 
@@ -1003,6 +1167,63 @@ async function syncYouTubeMetrics(db, user) {
   db.syncRuns.unshift(syncRun);
   db.syncRuns = db.syncRuns.slice(0, 250);
   addAudit(db, user, "sync.youtube", { mode, snapshotId: snapshot.id });
+  return { snapshot, syncRun };
+}
+
+async function syncProviderMetrics(db, user, slug) {
+  if (slug === "youtube") return syncYouTubeMetrics(db, user);
+  const provider = providerConfig[slug];
+  if (!provider) throw new Error("Provider is not configured.");
+  const token = user.oauthTokens?.[slug];
+  if (!token?.accessToken || token.tokenStatus === "reconnect_required" || token.tokenStatus === "exchange_failed") {
+    throw new Error(`${provider.label} needs to be connected before sync.`);
+  }
+  let providerData;
+  try {
+    const accessToken = await usableAccessToken(db, user, slug);
+    providerData = await buildProviderProfile(slug, accessToken);
+  } catch (error) {
+    user.oauthTokens[slug] = {
+      ...token,
+      tokenStatus: "reconnect_required",
+      error: error.message,
+      lastSyncFailedAt: new Date().toISOString()
+    };
+    throw new Error(`${provider.label} sync needs reconnect: ${error.message}`);
+  }
+  const currentToken = user.oauthTokens?.[slug] || token;
+  const snapshot = createMetricSnapshot({
+    workspaceId: user.workspaceId,
+    platform: provider.label,
+    source: "oauth-sync",
+    profile: providerData.profile || token.profile || null,
+    analyticsPreview: providerData.analyticsPreview,
+    latestContent: providerData.latestContent || [],
+    metrics: metricsFromProviderData(slug, providerData)
+  });
+  user.oauthTokens[slug] = {
+    ...currentToken,
+    profile: providerData.profile || currentToken.profile || null,
+    analyticsPreview: providerData.analyticsPreview,
+    latestContent: providerData.latestContent || [],
+    lastSyncedAt: snapshot.capturedAt,
+    tokenStatus: "synced"
+  };
+  db.metricSnapshots.push(snapshot);
+  db.metricSnapshots = db.metricSnapshots.slice(-1000);
+  const syncRun = {
+    id: crypto.randomUUID(),
+    workspaceId: user.workspaceId,
+    platform: provider.label,
+    mode: "oauth",
+    status: "complete",
+    snapshotId: snapshot.id,
+    startedAt: snapshot.capturedAt,
+    finishedAt: new Date().toISOString()
+  };
+  db.syncRuns.unshift(syncRun);
+  db.syncRuns = db.syncRuns.slice(0, 250);
+  addAudit(db, user, `sync.${slug}`, { mode: "oauth", snapshotId: snapshot.id });
   return { snapshot, syncRun };
 }
 
@@ -1396,17 +1617,24 @@ async function handleApi(req, res, url) {
     return;
   }
 
-  if (url.pathname === "/api/sync/youtube" && req.method === "POST") {
+  const syncProvider = url.pathname.match(/^\/api\/sync\/([^/]+)$/);
+  if (syncProvider && req.method === "POST") {
     if (!session) {
       sendJson(res, 401, { error: "Log in first." });
       return;
     }
+    const slug = providerSlug(syncProvider[1]);
+    const provider = providerConfig[slug];
+    if (!provider) {
+      sendJson(res, 404, { error: "Provider is not configured." });
+      return;
+    }
     if (session.user.plan === "free") {
-      sendJson(res, 402, { error: "YouTube metric sync is a Pro feature.", upgradeRequired: true });
+      sendJson(res, 402, { error: `${provider.label} metric sync is a Pro feature.`, upgradeRequired: true });
       return;
     }
     try {
-      const result = await syncYouTubeMetrics(db, session.user);
+      const result = await syncProviderMetrics(db, session.user, slug);
       writeDb(db);
       sendJson(res, 200, { ...result, summary: summarizeMetrics(db, session.user.workspaceId), user: publicUser(session.user) });
       return;
@@ -1414,14 +1642,14 @@ async function handleApi(req, res, url) {
       const syncRun = {
         id: crypto.randomUUID(),
         workspaceId: session.user.workspaceId,
-        platform: "YouTube",
+        platform: provider.label,
         status: "failed",
         error: error.message,
         startedAt: new Date().toISOString(),
         finishedAt: new Date().toISOString()
       };
       db.syncRuns.unshift(syncRun);
-      addAudit(db, session.user, "sync.youtube_failed", { error: error.message });
+      addAudit(db, session.user, `sync.${slug}_failed`, { error: error.message });
       writeDb(db);
       sendJson(res, 502, { error: error.message, syncRun });
       return;
@@ -1731,7 +1959,7 @@ async function handleApi(req, res, url) {
       { area: "Product prototype", score: 94, status: "Ready", detail: "Core UI, tabs, charts, Pro gating, onboarding, launch center, alerts, reports, and AI surfaces are demo-ready." },
       { area: "Authentication", score: 82, status: "Prototype", detail: "Local sessions and profile persistence exist. Production still needs email verification, password reset, and managed auth hosting." },
       { area: "Stripe billing", score: stripeReady ? 78 : 64, status: stripeReady ? "Credentials present" : "Next build", detail: stripeReady ? "Stripe environment keys are present. Checkout sessions and webhooks still need final production testing." : "Paywall journey is designed. Production needs Stripe products, checkout sessions, webhooks, and customer portal." },
-      { area: "OAuth providers", score: providerStatus.filter((item) => item.configured).length ? 72 : 54, status: "Provider setup", detail: `${providerStatus.filter((item) => item.configured).length}/${providerStatus.length} providers have credentials configured. YouTube now supports real token exchange, encrypted storage, and channel preview fetches.` },
+      { area: "OAuth providers", score: providerStatus.filter((item) => item.configured).length ? 74 : 56, status: "Provider setup", detail: `${providerStatus.filter((item) => item.configured).length}/${providerStatus.length} providers have credentials configured. YouTube and Meta now support real token exchange, encrypted storage, profile fetches, recent content, and metric snapshots.` },
       { area: "Data platform", score: databaseMode === "local-json" ? 58 : 82, status: databaseMode === "local-json" ? "Local only" : "Production database", detail: databaseMode === "local-json" ? "Prototype data persists locally. Launch needs a hosted database, backups, migrations, and event tables." : "External database mode is configured." },
       { area: "AI backend", score: aiReady ? 82 : 66, status: aiReady ? "Model configured" : "Local fallback", detail: aiReady ? "OpenAI Responses API is configured. Validate cost limits, logging policy, and prompt safety before launch." : "AI endpoints are live with deterministic local fallback. Add OPENAI_API_KEY for model-backed audits." },
       { area: "Landing and waitlist", score: db.waitlist.length ? 78 : 70, status: "Built", detail: `Public landing page and waitlist API are ready. Current waitlist count: ${db.waitlist.length}.` },
@@ -1808,7 +2036,7 @@ async function handleApi(req, res, url) {
     authUrl.searchParams.set("client_id", clientId);
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("scope", provider.scopes.join(" "));
+    authUrl.searchParams.set("scope", provider.scopes.join(provider.scopeSeparator || " "));
     authUrl.searchParams.set("state", state);
     Object.entries(provider.authParams || {}).forEach(([key, value]) => {
       authUrl.searchParams.set(key, value);
@@ -1869,6 +2097,18 @@ async function handleApi(req, res, url) {
     try {
       const redirectUri = providerRedirectUri(slug);
       const tokenResponse = await exchangeOAuthCode(provider, slug, code, redirectUri);
+      if ((slug === "instagram" || slug === "facebook") && tokenResponse.access_token) {
+        try {
+          const longLived = await extendMetaAccessToken(provider, tokenResponse.access_token);
+          if (longLived?.access_token) {
+            tokenResponse.access_token = longLived.access_token;
+            tokenResponse.expires_in = longLived.expires_in || tokenResponse.expires_in;
+            tokenResponse.token_type = longLived.token_type || tokenResponse.token_type;
+          }
+        } catch {
+          // Short-lived Meta tokens still work; a reconnect warning will appear when they expire.
+        }
+      }
       const accessToken = tokenResponse.access_token;
       const refreshToken = tokenResponse.refresh_token;
       const expiresAt = tokenResponse.expires_in ? Date.now() + Number(tokenResponse.expires_in) * 1000 : null;
@@ -1884,8 +2124,22 @@ async function handleApi(req, res, url) {
         refreshToken: refreshToken ? encryptValue(refreshToken) : user.oauthTokens[slug]?.refreshToken || null,
         tokenType: tokenResponse.token_type || "Bearer",
         profile: providerData.profile,
-        analyticsPreview: providerData.analyticsPreview
+        analyticsPreview: providerData.analyticsPreview,
+        latestContent: providerData.latestContent || []
       };
+      if (providerData.profile) {
+        const snapshot = createMetricSnapshot({
+          workspaceId: user.workspaceId,
+          platform: provider.label,
+          source: "oauth-connect",
+          metrics: metricsFromProviderData(slug, providerData),
+          profile: providerData.profile,
+          analyticsPreview: providerData.analyticsPreview,
+          latestContent: providerData.latestContent || []
+        });
+        db.metricSnapshots.push(snapshot);
+        db.metricSnapshots = db.metricSnapshots.slice(-1000);
+      }
       addAudit(db, user, "oauth.connected", { provider: slug, hasRefreshToken: Boolean(refreshToken) });
       delete db.oauthStates[state];
       writeDb(db);
