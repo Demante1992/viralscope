@@ -466,6 +466,7 @@ const oauthProviders = {
 
 let selectedPlatform = "YouTube";
 let previewPlatform = "YouTube";
+const previewActiveTabs = {};
 let activeRange = 30;
 let chartMode = "line";
 let chartPoints = [];
@@ -1803,6 +1804,60 @@ function renderIntegrations() {
 
 function renderChannelPreview() {
   const data = channelPreviewData[previewPlatform];
+  const activeTab = previewActiveTabs[previewPlatform] || data.tabs[0];
+  const profileName = data.name.replace(" source", "").replace(" account", "");
+  const tabCopy = {
+    Videos: {
+      title: "Latest uploads",
+      body: "Long-form videos, CTR, retention, comments, and revenue attribution will live here after sync.",
+      posts: data.posts
+    },
+    Shorts: {
+      title: "Short-form pulse",
+      body: "Shorts, Reels, TikToks, swipe-through hooks, share velocity, and remix ideas will be grouped here.",
+      posts: ["Hook winners", "Share spikes", "Loop rate", "Clip candidates"]
+    },
+    Live: {
+      title: "Live stream performance",
+      body: "Stream sessions, chat velocity, commands, clips, subs, and sponsor moments will appear here.",
+      posts: ["Chat velocity", "Clip moments", "Sponsor commands", "Viewer peaks"]
+    },
+    Playlists: {
+      title: "Series and content clusters",
+      body: "Playlists help reveal repeatable formats, binge paths, search clusters, and next-video funnels.",
+      posts: ["Growth series", "Audit playlist", "Sponsor proof", "Beginner path"]
+    },
+    About: {
+      title: "Channel profile",
+      body: `${profileName} profile, handle, bio context, links, audience fit, and brand-safe positioning.`,
+      posts: ["Bio context", "Tracked links", "Audience fit", "Brand safety"]
+    },
+    Posts: {
+      title: "Post grid",
+      body: "Feed posts, saves, shares, profile actions, and sponsor CTA paths are grouped in this view.",
+      posts: data.posts
+    },
+    Reels: {
+      title: "Reels performance",
+      body: "Short-form reach, replays, shares, and follow-through signals for Instagram Reels.",
+      posts: ["Reach spike", "Replay lift", "Save rate", "CTA clicks"]
+    },
+    Tagged: {
+      title: "Tagged content",
+      body: "Collabs, creator mentions, UGC, sponsor tags, and cross-posted proof can be reviewed here.",
+      posts: ["Collabs", "Mentions", "UGC", "Sponsor tags"]
+    },
+    Insights: {
+      title: "Native insights",
+      body: "Connected platform insights, profile clicks, audience movement, and best posting windows.",
+      posts: ["Reach", "Profile clicks", "Audience", "Best window"]
+    }
+  };
+  const tabState = tabCopy[activeTab] || {
+    title: `${activeTab} snapshot`,
+    body: `${activeTab} data for ${previewPlatform} will appear here as the connector deepens.`,
+    posts: data.posts
+  };
   $("#previewSwitcher").innerHTML = Object.keys(channelPreviewData)
     .map(
       (platform) => `
@@ -1819,7 +1874,7 @@ function renderChannelPreview() {
       <div class="preview-topbar">
         <span class="preview-brand">${formatBadge(previewPlatform)}${data.brand}</span>
         <div class="preview-tabs">
-          ${data.tabs.map((tab, index) => `<span class="${index === 0 ? "active" : ""}">${tab}</span>`).join("")}
+          ${data.tabs.map((tab) => `<button type="button" class="${tab === activeTab ? "active" : ""}" data-preview-tab="${tab}">${tab}</button>`).join("")}
         </div>
       </div>
       <div class="preview-profile">
@@ -1834,13 +1889,13 @@ function renderChannelPreview() {
       </div>
       <div class="preview-live-row">
         <div>
-          <strong>${previewPlatform === "Twitch" || previewPlatform === "Kick" ? "Live performance pulse" : "Latest content pulse"}</strong>
-          <p>${previewPlatform} preview uses connected account data to show platform-native channel context inside ViralScope.</p>
+          <strong>${tabState.title}</strong>
+          <p>${tabState.body}</p>
         </div>
         <span class="data-pill">${platforms.find((item) => item.name === previewPlatform)?.connected ? "Connected" : "Preview mode"}</span>
       </div>
       <div class="preview-post-grid">
-        ${data.posts.map((post) => `<article class="preview-post"><strong>${post}</strong></article>`).join("")}
+        ${tabState.posts.map((post, index) => `<article class="preview-post"><small>${activeTab} ${index + 1}</small><strong>${post}</strong></article>`).join("")}
       </div>
     </section>
   `;
@@ -1848,6 +1903,12 @@ function renderChannelPreview() {
   document.querySelectorAll("[data-preview-platform]").forEach((button) => {
     button.addEventListener("click", () => {
       previewPlatform = button.dataset.previewPlatform;
+      renderChannelPreview();
+    });
+  });
+  document.querySelectorAll("[data-preview-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      previewActiveTabs[previewPlatform] = button.dataset.previewTab;
       renderChannelPreview();
     });
   });

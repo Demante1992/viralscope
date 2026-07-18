@@ -2037,16 +2037,18 @@ canvas {
   flex-wrap: wrap;
 }
 
-.preview-tabs span {
+.preview-tabs button {
   padding: 8px 12px;
   color: rgba(247, 243, 234, 0.78);
+  border: 0;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   font-size: 0.84rem;
   font-weight: 800;
+  cursor: pointer;
 }
 
-.preview-tabs span.active {
+.preview-tabs button.active {
   color: #101214;
   background: #f7f3ea;
 }
@@ -2117,6 +2119,14 @@ canvas {
 .preview-post strong {
   display: block;
   margin-top: 48px;
+}
+
+.preview-post small {
+  color: rgba(247, 243, 234, 0.66);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .preview-live-row {
@@ -3889,12 +3899,12 @@ select,
 
 .preview-stat,
 .preview-live-row,
-.preview-tabs span {
+.preview-tabs button {
   border-color: rgba(255, 255, 255, 0.11);
   background: rgba(255, 255, 255, 0.055);
 }
 
-.preview-tabs span.active,
+.preview-tabs button.active,
 .preview-switcher button.active,
 .segmented button.active {
   color: #050608;
@@ -4419,7 +4429,7 @@ button.is-working {
 :root.light .visual-stat,
 :root.light .preview-stat,
 :root.light .preview-live-row,
-:root.light .preview-tabs span {
+:root.light .preview-tabs button {
   color: #f4f7fb;
   border-color: rgba(255, 255, 255, 0.14);
   background: rgba(17, 25, 29, 0.72);
