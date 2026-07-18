@@ -15,6 +15,7 @@ const dbVersion = 5;
 const appUrl = process.env.APP_URL || process.env.URL || process.env.DEPLOY_URL || `http://localhost:${port}`;
 const blobStoreName = process.env.NETLIFY_BLOBS_STORE || "viralscope-data";
 const blobDbKey = process.env.NETLIFY_BLOBS_DB_KEY || "db.json";
+let blobReadFailed = false;
 
 const planEntitlements = {
   free: {
@@ -203,6 +204,7 @@ function writeDb(db) {
 async function loadDbFromBlob() {
   if (!isNetlifyFunction) return;
   fs.mkdirSync(dataDir, { recursive: true });
+  blobReadFailed = false;
   try {
     const { getStore } = require("@netlify/blobs");
     const store = getStore({ name: blobStoreName, consistency: "strong" });
@@ -212,6 +214,7 @@ async function loadDbFromBlob() {
       return;
     }
   } catch (error) {
+    blobReadFailed = true;
     console.warn("Netlify Blobs read failed; using local function fallback.", error.message);
   }
   ensureDb();
@@ -219,6 +222,10 @@ async function loadDbFromBlob() {
 
 async function saveDbToBlob() {
   if (!isNetlifyFunction || !fs.existsSync(dbPath)) return;
+  if (blobReadFailed) {
+    console.warn("Skipping Netlify Blobs write because the read failed; preserving durable account data.");
+    return;
+  }
   try {
     const { getStore } = require("@netlify/blobs");
     const store = getStore({ name: blobStoreName, consistency: "strong" });

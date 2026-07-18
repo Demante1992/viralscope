@@ -1109,12 +1109,39 @@ function applyWorkspaceSourceState() {
     }
   });
 
-  (currentUser.connections || []).forEach((name) => {
+  const oauthStatuses = [
+    ...(currentUser.oauthStatus || []),
+    ...(currentUser.connections || [])
+      .filter((name) => !(currentUser.oauthStatus || []).some((status) => status.label === name))
+      .map((name) => ({ label: name, provider: name.toLowerCase(), tokenStatus: "connected", profile: null }))
+  ];
+
+  oauthStatuses.forEach((status) => {
+    const name = status.label || status.provider;
     const platform = platforms.find((entry) => entry.name === name);
     if (!platform) return;
+    const profile = status.profile || {};
+    const preview = channelPreviewData[platform.name];
     platform.connected = true;
-    platform.health = Math.max(platform.health, 92);
-    platform.followers = platform.followers === "Not linked" ? "OAuth sync" : platform.followers;
+    platform.health = status.tokenStatus === "reconnect_required" ? 64 : Math.max(platform.health, 92);
+    const followerCount = profile.subscribers ?? profile.followers;
+    platform.followers = followerCount != null ? compactDisplayNumber(followerCount) : "OAuth sync";
+    if (preview) {
+      preview.name = profile.title || preview.name.replace(" source", " account");
+      preview.handle = profile.handle || (profile.id ? `Channel ${profile.id}` : "OAuth connected");
+      preview.avatar = platform.name === "YouTube" && profile.title
+        ? profile.title.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()
+        : preview.avatar;
+      preview.stats = [
+        [compactDisplayNumber(profile.views || 0), platform.name === "Website" ? "Visits" : "Views"],
+        [compactDisplayNumber(profile.subscribers || profile.followers || 0), platform.name === "YouTube" ? "Subscribers" : "Followers"],
+        [status.tokenStatus === "reconnect_required" ? "Reconnect" : "Connected", "OAuth"],
+        [status.expiresAt ? "Ready" : "Pending", "First sync"]
+      ];
+      preview.posts = status.tokenStatus === "reconnect_required"
+        ? ["Reconnect needed", "Token expired", "Open OAuth", "Resume sync"]
+        : ["OAuth connected", "Ready to sync", "Channel profile", "Metrics next"];
+    }
   });
 
   integrations = integrations.map((item) => {
