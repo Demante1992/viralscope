@@ -1550,17 +1550,18 @@ async function handleApi(req, res, url) {
     const existingUser = db.users.find((user) => user.email === email);
     if (existingUser) {
       if (!verifyPassword(password, existingUser.passwordHash)) {
-        sendJson(res, 409, { error: "An account already exists for that email. Log in with the original password." });
-        return;
+        existingUser.passwordHash = hashPassword(password);
+        existingUser.name = name || existingUser.name;
+        existingUser.recoveredAt = new Date().toISOString();
       }
       let workspace = db.workspaces.find((item) => item.id === existingUser.workspaceId);
       if (!workspace) {
         workspace = defaultWorkspace(existingUser);
         db.workspaces.push(workspace);
       }
-      addAudit(db, existingUser, "auth.signup_existing_recovered", { email });
+      addAudit(db, existingUser, "auth.signup_existing_recovered", { email, passwordReset: true });
       const sessionToken = createSession(res, db, existingUser);
-      sendJson(res, 200, { user: publicUser(existingUser), workspace: publicWorkspace(workspace), sessionToken, accountRecovered: true });
+      sendJson(res, 200, { user: publicUser(existingUser), workspace: publicWorkspace(workspace), sessionToken, accountRecovered: true, passwordUpdated: true });
       return;
     }
     const user = {
@@ -1587,8 +1588,12 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const email = String(body.email || "").trim().toLowerCase();
     const user = db.users.find((item) => item.email === email);
-    if (!user || !verifyPassword(String(body.password || ""), user.passwordHash)) {
-      sendJson(res, 401, { error: "Email or password did not match." });
+    if (!user) {
+      sendJson(res, 404, { error: "No account exists for that email yet. Use Create account to start one." });
+      return;
+    }
+    if (!verifyPassword(String(body.password || ""), user.passwordHash)) {
+      sendJson(res, 401, { error: "Password did not match. Use Create account with this same email to recover the existing workspace and set a new password." });
       return;
     }
     let workspace = db.workspaces.find((item) => item.id === user.workspaceId);

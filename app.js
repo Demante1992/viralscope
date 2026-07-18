@@ -3470,7 +3470,7 @@ async function submitAuth(event) {
       method: "POST",
       body: JSON.stringify(payload)
     });
-    await applyAuthResult(data, data.accountRecovered ? "Existing account restored." : authMode === "signup" ? "Free account created." : "Logged in.");
+    await applyAuthResult(data, data.accountRecovered ? "Existing workspace restored. This password is now active." : authMode === "signup" ? "Free account created." : "Logged in.");
   } catch (error) {
     if (authMode === "signup" && error.status === 409) {
       try {
@@ -3485,6 +3485,13 @@ async function submitAuth(event) {
         showToast("That email already exists. Log in with your password.");
         return;
       }
+    }
+    if (authMode === "login" && (error.status === 401 || error.status === 404)) {
+      openAuthDialog("signup");
+      showToast(error.status === 401
+        ? "Password mismatch. Use Create account with this email to recover and set a new password."
+        : "No account found. Create one with this email to start.");
+      return;
     }
     showToast(error.message);
   }
