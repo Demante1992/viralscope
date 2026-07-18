@@ -70,7 +70,7 @@ const providerConfig = {
     clientIdEnv: "META_CLIENT_ID",
     clientSecretEnv: "META_CLIENT_SECRET",
     scopeSeparator: ",",
-    scopes: ["public_profile", "email"],
+    scopes: ["public_profile"],
     advancedScopes: ["pages_show_list", "pages_read_engagement", "instagram_basic", "instagram_manage_insights"]
   },
   facebook: {
@@ -80,7 +80,7 @@ const providerConfig = {
     clientIdEnv: "META_CLIENT_ID",
     clientSecretEnv: "META_CLIENT_SECRET",
     scopeSeparator: ",",
-    scopes: ["public_profile", "email"],
+    scopes: ["public_profile"],
     advancedScopes: ["pages_show_list", "pages_read_engagement", "read_insights"]
   },
   tiktok: {

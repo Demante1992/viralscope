@@ -191,7 +191,7 @@ Other providers share the same start/callback structure and can be hardened next
 Meta Instagram/Facebook OAuth:
 
 - Uses one Meta app for both Instagram and Facebook.
-- Requests `public_profile` and `email` for the first production-safe OAuth connection.
+- Requests `public_profile` for the first production-safe OAuth connection.
 - Exchanges authorization codes server-side.
 - Attempts to exchange Meta's short-lived user token for a longer-lived user token.
 - Stores basic profile metadata immediately.

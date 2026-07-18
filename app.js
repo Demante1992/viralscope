@@ -964,7 +964,7 @@ function renderOAuthSetupRequired(errorData = {}) {
       <code>${redirectLines.join("\n")}</code>
       <strong>Netlify variables</strong>
       <code>${required.length ? required.join(" + ") : "Provider client ID + secret"}</code>
-      ${isMeta ? "<strong>Meta permissions now</strong><code>public_profile + email</code><strong>Advanced permissions later</strong><code>pages_show_list + pages_read_engagement + instagram_basic + instagram_manage_insights + read_insights</code>" : ""}
+      ${isMeta ? "<strong>Meta permissions now</strong><code>public_profile</code><strong>Advanced permissions later</strong><code>pages_show_list + pages_read_engagement + instagram_basic + instagram_manage_insights + read_insights</code>" : ""}
     </div>
   `;
 }
