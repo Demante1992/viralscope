@@ -326,6 +326,7 @@ const demoState = {
   activityFeed: activityFeed.map((item) => ({ ...item })),
   liveOpsState: { ...liveOpsState },
   integrations: integrations.map((item) => ({ ...item })),
+  recommendations: JSON.parse(JSON.stringify(recommendations)),
   channelPreviewData: JSON.parse(JSON.stringify(channelPreviewData))
 };
 
@@ -1006,6 +1007,8 @@ function restoreDemoState() {
   activityFeed = demoState.activityFeed.map((item) => ({ ...item }));
   liveOpsState = { ...demoState.liveOpsState };
   integrations = demoState.integrations.map((item) => ({ ...item }));
+  recommendations.fast = demoState.recommendations.fast.map((item) => ({ ...item }));
+  recommendations.deep = demoState.recommendations.deep.map((item) => ({ ...item }));
   Object.entries(demoState.channelPreviewData).forEach(([platform, data]) => {
     channelPreviewData[platform] = JSON.parse(JSON.stringify(data));
   });
@@ -1047,6 +1050,148 @@ function applyEmptyMetricState() {
   setMetricText("engagements", "0");
   setMetricText("siteClicks", urls.length ? "0" : "0");
   setMetricText("revenue", "$0");
+}
+
+function liveContentRowsFromSnapshots() {
+  const snapshotRows = (metricsSummary?.latest || []).flatMap((snapshot) => {
+    const content = Array.isArray(snapshot.latestContent) ? snapshot.latestContent : [];
+    return content.slice(0, 8).map((item, index) => {
+      const analytics = item.analytics || {};
+      const views = analytics.views ?? item.views ?? 0;
+      const likes = analytics.likes ?? item.likes ?? 0;
+      const comments = analytics.comments ?? item.comments ?? 0;
+      const engagementRate = views ? Math.min(99, ((likes + comments) / views) * 100) : 0;
+      const lift = Math.max(42, Math.min(98, Math.round(62 + engagementRate * 2.4 + Math.max(0, 8 - index) * 2)));
+      return {
+        platform: snapshot.platform,
+        title: item.title || `${snapshot.platform} content ${index + 1}`,
+        views: compactDisplayNumber(views),
+        engagement: `${engagementRate.toFixed(1)}%`,
+        clicks: compactDisplayNumber(snapshot.metrics?.clicks || 0),
+        lift,
+        liftBreakdown: {
+          velocity: Math.min(99, lift + 4),
+          engagement: Math.min(99, Math.round(engagementRate * 8) || lift - 8),
+          clicks: snapshot.metrics?.clicks ? Math.min(99, lift + 2) : 54,
+          retention: snapshot.analyticsPreview?.averageViewDuration ? Math.min(99, Math.round(snapshot.analyticsPreview.averageViewDuration / 2)) : 72,
+          revenue: snapshot.metrics?.revenue ? Math.min(99, lift + 1) : 58,
+          reason: "Generated from the latest OAuth snapshot: views, engagement, sync freshness, and available analytics signals."
+        }
+      };
+    });
+  });
+  if (snapshotRows.length) return snapshotRows;
+
+  return (currentUser?.oauthStatus || [])
+    .filter((status) => status.tokenStatus !== "reconnect_required")
+    .map((status) => ({
+      platform: status.label || status.provider,
+      title: `${status.profile?.title || status.label || "Connected channel"} is ready for first sync`,
+      views: compactDisplayNumber(status.profile?.views || 0),
+      engagement: "Pending",
+      clicks: "0",
+      lift: 64,
+      liftBreakdown: {
+        velocity: 62,
+        engagement: 58,
+        clicks: 52,
+        retention: 60,
+        revenue: 48,
+        reason: "OAuth is connected, but the first metric sync has not populated full content analytics yet."
+      }
+    }));
+}
+
+function buildConnectedWorkspaceNarrative() {
+  const liveSnapshots = metricsSummary?.latest || [];
+  const oauthStatuses = (currentUser?.oauthStatus || []).filter((status) => status.tokenStatus !== "reconnect_required");
+  const connectedPlatforms = platforms.filter((item) => item.connected);
+  const latestYouTube = liveSnapshots.find((item) => item.platform === "YouTube");
+  const latestVideo = latestYouTube?.latestContent?.[0] || oauthStatuses.find((status) => status.label === "YouTube")?.latestContent?.[0];
+  if (!connectedPlatforms.length) return;
+
+  liveOpsState = {
+    title: "Connected signals online",
+    body: `${connectedPlatforms.map((item) => item.name).join(", ")} ${connectedPlatforms.length === 1 ? "is" : "are"} feeding the workspace. ${latestVideo?.title ? `Latest YouTube pull: ${latestVideo.title}.` : "Run sync to pull the newest content metrics."}`,
+    status: `${connectedPlatforms.length} connected source${connectedPlatforms.length === 1 ? "" : "s"}`
+  };
+
+  activityFeed = [
+    ...(liveSnapshots.length
+      ? liveSnapshots.map((snapshot) => ({
+          type: "Sync",
+          title: `${snapshot.platform} metrics refreshed from ${snapshot.source === "oauth-sync" ? "OAuth" : "backend snapshot"}`,
+          time: new Date(snapshot.capturedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+          status: "live"
+        }))
+      : oauthStatuses.map((status) => ({
+          type: "OAuth",
+          title: `${status.label || status.provider} connected and ready for first metric sync`,
+          time: "Now",
+          status: "live"
+        }))),
+    ...urls.slice(0, 3).map((item) => ({
+      type: "URL",
+      title: `${item.source} URL tracking active`,
+      time: "Now",
+      status: "live"
+    }))
+  ].slice(0, 6);
+
+  alerts = liveSnapshots.length
+    ? liveSnapshots.flatMap((snapshot) => {
+        const latest = snapshot.latestContent?.[0];
+        const views = snapshot.metrics?.views || snapshot.profile?.views || 0;
+        const followers = snapshot.metrics?.subscribers || snapshot.metrics?.followers || snapshot.profile?.subscribers || 0;
+        return [
+          {
+            title: `${snapshot.platform} sync complete`,
+            body: `${snapshot.profile?.title || snapshot.platform} is connected with ${compactDisplayNumber(views)} total views and ${compactDisplayNumber(followers)} audience count.`,
+            severity: "live",
+            time: "Now"
+          },
+          latest
+            ? {
+                title: "Latest content ready for audit",
+                body: `"${latest.title}" is now available for content review, repurposing, and AI coaching.`,
+                severity: "ai",
+                time: "New"
+              }
+            : null
+        ].filter(Boolean);
+      }).slice(0, 5)
+    : oauthStatuses.length
+      ? oauthStatuses.map((status) => ({
+          title: `${status.label || status.provider} OAuth connected`,
+          body: `${status.profile?.title || status.label || "This account"} is authenticated. Run a sync to populate latest content, charts, AI coach context, and alert baselines.`,
+          severity: "live",
+          time: "Now"
+        })).slice(0, 5)
+      : alerts;
+
+  if (latestVideo) {
+    recommendations.fast = [
+      {
+        title: `Audit "${latestVideo.title.slice(0, 54)}${latestVideo.title.length > 54 ? "..." : ""}"`,
+        body: "Use the connected YouTube snapshot to tighten the title, pick a Shorts angle, and compare the first-hour signal against your channel baseline."
+      },
+      ...(demoState.recommendations?.fast || [])
+    ].slice(0, 3);
+  }
+}
+
+function applySnapshotChartSeries(snapshot) {
+  const series = chartSeries[snapshot.platform];
+  if (!series) return;
+  const views = snapshot.metrics?.views || snapshot.profile?.views || 0;
+  const finalValue = Math.max(1, Math.round(views / 1000));
+  const startValue = Math.max(1, Math.round(finalValue * 0.58));
+  series.values = Array.from({ length: 12 }, (_, index) => {
+    const progress = index / 11;
+    const wobble = Math.sin(index * 1.7) * Math.max(1, finalValue * 0.035);
+    return Math.max(1, Math.round(startValue + (finalValue - startValue) * progress + wobble));
+  });
+  activeChartPlatforms.add(snapshot.platform);
 }
 
 function applyWorkspaceSourceState() {
@@ -1177,6 +1322,9 @@ function applyWorkspaceSourceState() {
         body: "Add a channel URL for free tracking, or upgrade/connect OAuth when live provider credentials are configured.",
         status: "No sources yet"
       };
+  if ((currentUser.oauthStatus || []).some((status) => status.tokenStatus !== "reconnect_required")) {
+    buildConnectedWorkspaceNarrative();
+  }
   applyEmptyMetricState();
 }
 
@@ -1191,6 +1339,7 @@ async function refreshSession() {
     applyWorkspaceSourceState();
     await refreshTrackedUrls();
     await refreshMetricsSummary();
+    renderAll();
   } catch {
     currentUser = null;
     currentWorkspace = null;
@@ -1270,6 +1419,7 @@ function applyMetricsSummary() {
       const followerCount = snapshot.metrics?.subscribers ?? snapshot.metrics?.followers;
       if (followerCount != null) platform.followers = compactDisplayNumber(followerCount);
     }
+    applySnapshotChartSeries(snapshot);
     if (snapshot.platform === "YouTube" && snapshot.profile) {
       channelPreviewData.YouTube.name = snapshot.profile.title || channelPreviewData.YouTube.name;
       channelPreviewData.YouTube.handle = snapshot.profile.handle || channelPreviewData.YouTube.handle;
@@ -1282,6 +1432,17 @@ function applyMetricsSummary() {
       ];
     }
   });
+  integrations = integrations.map((item) => {
+    const snapshot = metricsSummary.latest.find((entry) => entry.platform === item.platform);
+    if (!snapshot) return item;
+    return {
+      ...item,
+      status: snapshot.source === "oauth-sync" ? "Live sync" : "Snapshot",
+      scope: platformScope(item.platform, "oauth"),
+      freshness: new Date(snapshot.capturedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    };
+  });
+  buildConnectedWorkspaceNarrative();
 }
 
 function contentCardLabel(item) {
@@ -1316,6 +1477,12 @@ async function refreshMetricsSummary(showResult = false) {
     applyMetricsSummary();
     renderChannels();
     renderChannelPreview();
+    renderContent();
+    renderAlerts();
+    renderActivityFeed();
+    renderIntegrations();
+    renderCoach();
+    animateTrafficChart();
     if (showResult) showToast("Metric summary loaded from backend snapshots.");
   } catch (error) {
     if (showResult) showToast(error.message);
@@ -1549,7 +1716,7 @@ function renderChannels() {
 function renderContent() {
   const filter = $("#platformFilter").value;
   const query = $("#searchInput").value.trim().toLowerCase();
-  const contentSource = currentUser ? [] : topContent;
+  const contentSource = currentUser ? liveContentRowsFromSnapshots() : topContent;
   const filtered = contentSource.filter((item) => {
     const matchesPlatform = filter === "All" || item.platform === filter;
     const matchesQuery = !query || `${item.title} ${item.platform}`.toLowerCase().includes(query);
