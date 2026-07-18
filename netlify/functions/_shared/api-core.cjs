@@ -105,6 +105,17 @@ const providerConfig = {
 
 const tokenEncryptionSecret = process.env.TOKEN_ENCRYPTION_KEY || "viralscope-local-dev-token-key-change-before-production";
 
+function providerCredentials(provider) {
+  return {
+    clientId: envValue(provider.clientIdEnv),
+    clientSecret: envValue(provider.clientSecretEnv)
+  };
+}
+
+function providerRedirectUri(slug) {
+  return `${appUrl}/api/oauth/callback/${slug}`;
+}
+
 function ensureDb() {
   fs.mkdirSync(dataDir, { recursive: true });
   if (!fs.existsSync(dbPath)) {
@@ -671,9 +682,10 @@ function postForm(urlString, params, headers = {}) {
 }
 
 async function exchangeOAuthCode(provider, slug, code, redirectUri) {
+  const credentials = providerCredentials(provider);
   const params = {
-    client_id: process.env[provider.clientIdEnv],
-    client_secret: process.env[provider.clientSecretEnv],
+    client_id: credentials.clientId,
+    client_secret: credentials.clientSecret,
     code,
     redirect_uri: redirectUri,
     grant_type: "authorization_code"
@@ -683,6 +695,51 @@ async function exchangeOAuthCode(provider, slug, code, redirectUri) {
     delete params.client_id;
   }
   return postForm(provider.tokenUrl, params);
+}
+
+async function refreshOAuthAccessToken(provider, slug, encryptedRefreshToken) {
+  if (!encryptedRefreshToken) {
+    throw new Error(`${provider.label} needs to be reconnected because no refresh token is stored.`);
+  }
+  const credentials = providerCredentials(provider);
+  if (!credentials.clientId || !credentials.clientSecret) {
+    throw new Error(`${provider.label} OAuth credentials are missing in Netlify.`);
+  }
+  const params = {
+    client_id: credentials.clientId,
+    client_secret: credentials.clientSecret,
+    refresh_token: decryptValue(encryptedRefreshToken),
+    grant_type: "refresh_token"
+  };
+  if (slug === "tiktok") {
+    params.client_key = params.client_id;
+    delete params.client_id;
+  }
+  return postForm(provider.tokenUrl, params);
+}
+
+async function usableAccessToken(db, user, slug) {
+  const provider = providerConfig[slug];
+  const token = user.oauthTokens?.[slug];
+  if (!provider || !token?.accessToken || token.tokenStatus === "reconnect_required") return null;
+  const expiresSoon = token.expiresAt && Number(token.expiresAt) <= Date.now() + 90_000;
+  if (!expiresSoon) return decryptValue(token.accessToken);
+  const refreshed = await refreshOAuthAccessToken(provider, slug, token.refreshToken);
+  if (!refreshed.access_token) {
+    throw new Error(`${provider.label} token refresh did not return an access token.`);
+  }
+  const expiresAt = refreshed.expires_in ? Date.now() + Number(refreshed.expires_in) * 1000 : token.expiresAt;
+  user.oauthTokens[slug] = {
+    ...token,
+    accessToken: encryptValue(refreshed.access_token),
+    refreshToken: refreshed.refresh_token ? encryptValue(refreshed.refresh_token) : token.refreshToken,
+    expiresAt,
+    tokenType: refreshed.token_type || token.tokenType || "Bearer",
+    tokenStatus: "refreshed",
+    lastRefreshedAt: new Date().toISOString()
+  };
+  addAudit(db, user, "oauth.token_refreshed", { provider: slug });
+  return refreshed.access_token;
 }
 
 async function fetchYouTubeProfile(accessToken) {
@@ -778,13 +835,28 @@ async function syncYouTubeMetrics(db, user) {
   const token = user.oauthTokens?.youtube;
   let snapshot;
   let mode = "demo";
-  if (token?.accessToken && token.tokenStatus === "connected") {
-    const accessToken = decryptValue(token.accessToken);
-    const providerData = await buildProviderProfile("youtube", accessToken);
+  if (token?.accessToken && token.tokenStatus !== "reconnect_required" && token.tokenStatus !== "exchange_failed") {
+    let accessToken;
+    let providerData;
+    try {
+      accessToken = await usableAccessToken(db, user, "youtube");
+      providerData = await buildProviderProfile("youtube", accessToken);
+    } catch (error) {
+      if (user.oauthTokens?.youtube) {
+        user.oauthTokens.youtube = {
+          ...user.oauthTokens.youtube,
+          tokenStatus: "reconnect_required",
+          error: error.message,
+          lastSyncFailedAt: new Date().toISOString()
+        };
+      }
+      throw new Error(`YouTube sync needs reconnect: ${error.message}`);
+    }
     const profile = providerData.profile || token.profile || {};
     const columns = providerData.analyticsPreview?.columns || [];
     const totals = providerData.analyticsPreview?.totals || [];
     const metricByColumn = Object.fromEntries(columns.map((column, index) => [column, totals[index]]));
+    const currentToken = user.oauthTokens?.youtube || token;
     snapshot = createMetricSnapshot({
       workspaceId: user.workspaceId,
       platform: "YouTube",
@@ -802,7 +874,7 @@ async function syncYouTubeMetrics(db, user) {
       }
     });
     user.oauthTokens.youtube = {
-      ...token,
+      ...currentToken,
       profile,
       analyticsPreview: providerData.analyticsPreview,
       lastSyncedAt: snapshot.capturedAt,
@@ -1492,13 +1564,16 @@ async function handleApi(req, res, url) {
 
   if (url.pathname === "/api/launch/readiness" && req.method === "GET") {
     const providerStatus = Object.entries(providerConfig).map(([slug, provider]) => {
-      const hasClient = Boolean(process.env[provider.clientIdEnv]);
-      const hasSecret = Boolean(process.env[provider.clientSecretEnv]);
+      const { clientId, clientSecret } = providerCredentials(provider);
+      const hasClient = Boolean(clientId);
+      const hasSecret = Boolean(clientSecret);
       return {
         slug,
         label: provider.label,
         configured: hasClient && hasSecret,
         status: hasClient && hasSecret ? "Credentials present" : "Needs credentials",
+        redirectUri: providerRedirectUri(slug),
+        requiredEnv: [provider.clientIdEnv, provider.clientSecretEnv],
         scopes: provider.scopes
       };
     });
@@ -1547,7 +1622,7 @@ async function handleApi(req, res, url) {
       sendJson(res, 401, { error: "Log in to connect accounts." });
       return;
     }
-    if (session.user.plan !== "pro") {
+    if (!["pro", "studio"].includes(session.user.plan)) {
       sendJson(res, 402, { error: "OAuth account connections are a Pro feature.", upgradeRequired: true });
       return;
     }
@@ -1557,9 +1632,18 @@ async function handleApi(req, res, url) {
       sendJson(res, 404, { error: "Provider is not configured." });
       return;
     }
-    const clientId = process.env[provider.clientIdEnv];
-    const clientSecret = process.env[provider.clientSecretEnv];
+    const { clientId, clientSecret } = providerCredentials(provider);
     if (!clientId || !clientSecret) {
+      if (isNetlifyFunction) {
+        sendJson(res, 503, {
+          error: `${provider.label} OAuth is not configured yet. Add ${provider.clientIdEnv} and ${provider.clientSecretEnv} in Netlify, then redeploy.`,
+          setupRequired: true,
+          provider: slug,
+          requiredEnv: [provider.clientIdEnv, provider.clientSecretEnv],
+          redirectUri: providerRedirectUri(slug)
+        });
+        return;
+      }
       session.user.connections = Array.from(new Set([...(session.user.connections || []), provider.label]));
       session.user.oauthTokens = session.user.oauthTokens || {};
       session.user.oauthTokens[slug] = {
@@ -1578,7 +1662,7 @@ async function handleApi(req, res, url) {
     const state = crypto.randomBytes(18).toString("hex");
     db.oauthStates[state] = { userId: session.user.id, provider: slug, createdAt: Date.now() };
     writeDb(db);
-    const redirectUri = `${appUrl}/api/oauth/callback/${slug}`;
+    const redirectUri = providerRedirectUri(slug);
     const authUrl = new URL(provider.authUrl);
     authUrl.searchParams.set("client_id", clientId);
     authUrl.searchParams.set("redirect_uri", redirectUri);
@@ -1642,7 +1726,7 @@ async function handleApi(req, res, url) {
       return;
     }
     try {
-      const redirectUri = `${appUrl}/api/oauth/callback/${slug}`;
+      const redirectUri = providerRedirectUri(slug);
       const tokenResponse = await exchangeOAuthCode(provider, slug, code, redirectUri);
       const accessToken = tokenResponse.access_token;
       const refreshToken = tokenResponse.refresh_token;

@@ -966,9 +966,9 @@ function updateAccountUi() {
     button.classList.remove("pro");
     return;
   }
-  const plan = currentUser.plan === "pro" ? "Pro" : "Free";
+  const plan = currentUser.plan === "studio" ? "Studio" : currentUser.plan === "pro" ? "Pro" : "Free";
   button.textContent = `${currentUser.name} · ${plan}`;
-  button.classList.toggle("pro", currentUser.plan === "pro");
+  button.classList.toggle("pro", ["pro", "studio"].includes(currentUser.plan));
   renderOnboarding();
 }
 
@@ -2702,15 +2702,22 @@ function renderPlatformGrid() {
 
 function renderOAuthPreview() {
   const provider = oauthProviders[selectedPlatform];
+  const slug = selectedPlatform.toLowerCase();
+  const liveStatus = currentUser?.oauthStatus?.find((item) => item.provider === slug);
+  const statusLabel = liveStatus
+    ? liveStatus.tokenStatus === "reconnect_required"
+      ? "Reconnect needed"
+      : "Connected"
+    : provider.status;
   $("#oauthPreview").innerHTML = `
     <header>
       <div>
         <p class="eyebrow">${provider.method}</p>
         <h4>${selectedPlatform} account connection</h4>
       </div>
-      <span class="data-pill">${provider.status}</span>
+      <span class="data-pill">${statusLabel}</span>
     </header>
-    <p>${provider.note}</p>
+    <p>${liveStatus?.profile?.title ? `Connected to ${liveStatus.profile.title}.` : provider.note}</p>
     <div class="scope-list">
       ${provider.scopes.map((scope) => `<span class="data-pill">${scope}</span>`).join("")}
     </div>
@@ -2764,7 +2771,7 @@ async function connectOAuth(event) {
     openAuthDialog("login");
     return;
   }
-  if (currentUser.plan !== "pro") {
+  if (!["pro", "studio"].includes(currentUser.plan)) {
     $("#connectDialog").close();
     openUpgradeDialog();
     return;
@@ -2798,6 +2805,11 @@ async function connectOAuth(event) {
       return;
     }
     if (error.status === 401) openAuthDialog("login");
+    if (error.data?.setupRequired) {
+      const required = error.data.requiredEnv?.join(" + ") || "provider OAuth variables";
+      showToast(`${error.message} Redirect URI: ${error.data.redirectUri}. Required: ${required}.`);
+      return;
+    }
     showToast(error.message);
     return;
   }
@@ -3260,7 +3272,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#connectOAuth").addEventListener("click", connectOAuth);
   $("#accountButton").addEventListener("click", () => {
     if (!currentUser) openAuthDialog("login");
-    else if (currentUser.plan === "pro") openSettingsDialog("billing");
+    else if (["pro", "studio"].includes(currentUser.plan)) openSettingsDialog("billing");
     else openUpgradeDialog();
   });
   $("#toggleAuthMode").addEventListener("click", () => openAuthDialog(authMode === "login" ? "signup" : "login"));

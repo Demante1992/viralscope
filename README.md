@@ -88,7 +88,7 @@ https://your-netlify-site-or-domain.com/api/oauth/callback/kick
 
 - Free accounts can track URLs and campaign links.
 - Pro accounts can connect platform accounts through OAuth-ready routes.
-- If provider credentials are not configured, OAuth is simulated for local demo.
+- If provider credentials are not configured, OAuth is simulated only for local demo. Netlify production returns a setup-required error instead of pretending the connection worked.
 
 ## Backend readiness APIs
 
@@ -150,17 +150,39 @@ YouTube is the first production-hardened provider:
 - Requests `https://www.googleapis.com/auth/yt-analytics.readonly`.
 - Exchanges authorization codes server-side.
 - Stores access and refresh tokens encrypted.
+- Refreshes expired access tokens server-side before metric sync.
 - Fetches the authenticated channel profile through `youtube.channels.list`.
 - Attempts a 28-day YouTube Analytics preview through `youtubeanalytics.reports.query`.
 
-Before using live YouTube OAuth:
+Before using live YouTube OAuth on Netlify:
 
 1. Create a Google Cloud project.
 2. Enable YouTube Data API v3 and YouTube Analytics API.
 3. Configure OAuth consent screen.
 4. Create an OAuth Web application client.
-5. Add `http://localhost:4173/api/oauth/callback/youtube` as a redirect URI.
-6. Set `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and `TOKEN_ENCRYPTION_KEY`.
+5. Add this authorized redirect URI:
+
+```text
+https://useviralscope.netlify.app/api/oauth/callback/youtube
+```
+
+6. Add yourself as a test user while the Google consent screen is in testing mode.
+7. Set these Netlify environment variables:
+
+```text
+APP_URL=https://useviralscope.netlify.app
+YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
+TOKEN_ENCRYPTION_KEY=
+```
+
+8. Redeploy the site, log into a Pro ViralScope account, and click the YouTube OAuth connection.
+
+For local YouTube OAuth testing, also add this redirect URI to the same Google OAuth client:
+
+```text
+http://localhost:4173/api/oauth/callback/youtube
+```
 
 Other providers share the same start/callback structure and can be hardened next with provider-specific token exchange, profile fetch, token refresh, and app review requirements.
 
