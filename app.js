@@ -450,9 +450,9 @@ const oauthProviders = {
   },
   Instagram: {
     method: "Meta OAuth",
-    status: "Supported for Creator/Business",
-    scopes: ["Instagram insights", "media metrics", "profile data", "comments"],
-    note: "Requires Meta app review and an Instagram Creator or Business account."
+    status: "Basic login supported",
+    scopes: ["Basic Meta login", "profile identity", "Pro connector", "insights after review"],
+    note: "Connects with basic Meta login now. Instagram media and insight sync unlock after Meta Page/Instagram permissions are approved."
   },
   TikTok: {
     method: "TikTok Login Kit",
@@ -474,9 +474,9 @@ const oauthProviders = {
   },
   Facebook: {
     method: "Meta OAuth",
-    status: "Supported for Pages",
-    scopes: ["Page insights", "video metrics", "post engagement", "audience"],
-    note: "Requires Meta app review and permissions for managed Pages."
+    status: "Basic login supported",
+    scopes: ["Basic Meta login", "profile identity", "Page access after review", "insights after review"],
+    note: "Connects with basic Meta login now. Page posts, video metrics, and insights need Meta advanced access/app review."
   },
   Website: {
     method: "Tracking snippet or URL",
@@ -958,13 +958,13 @@ function renderOAuthSetupRequired(errorData = {}) {
       </div>
       <span class="data-pill">Needs keys</span>
     </header>
-    <p>${isMeta ? "Add one Meta app's credentials in Netlify. The same app can connect Instagram Creator/Business accounts and Facebook Pages." : "Add the provider credentials in Netlify, redeploy, then try OAuth again."}</p>
+    <p>${isMeta ? "Add one Meta app's credentials in Netlify. Basic login works first; Page, post, and Instagram insights unlock after Meta advanced access/app review." : "Add the provider credentials in Netlify, redeploy, then try OAuth again."}</p>
     <div class="setup-callout">
       <strong>${redirectLines.length > 1 ? "Redirect URIs" : "Redirect URI"}</strong>
       <code>${redirectLines.join("\n")}</code>
       <strong>Netlify variables</strong>
       <code>${required.length ? required.join(" + ") : "Provider client ID + secret"}</code>
-      ${isMeta ? "<strong>Meta permissions</strong><code>pages_show_list + pages_read_engagement + instagram_basic + instagram_manage_insights</code>" : ""}
+      ${isMeta ? "<strong>Meta permissions now</strong><code>public_profile + email</code><strong>Advanced permissions later</strong><code>pages_show_list + pages_read_engagement + instagram_basic + instagram_manage_insights + read_insights</code>" : ""}
     </div>
   `;
 }
@@ -1796,6 +1796,8 @@ function openAuthDialog(mode = "login") {
   $("#authTitle").textContent = mode === "signup" ? "Create account" : "Log in";
   $("#toggleAuthMode").textContent = mode === "signup" ? "I already have an account" : "Create account";
   document.querySelector(".auth-name-field").classList.toggle("is-hidden", mode !== "signup");
+  const rememberedEmail = window.localStorage.getItem("viralscopeLastEmail") || "";
+  if (rememberedEmail && !$("#authEmail").value.trim()) $("#authEmail").value = rememberedEmail;
   const dialog = $("#authDialog");
   if (typeof dialog.showModal === "function") dialog.showModal();
 }
@@ -3403,6 +3405,7 @@ async function applyAuthResult(data, message) {
     sessionToken = data.sessionToken;
     window.localStorage.setItem("viralscopeSessionToken", sessionToken);
   }
+  if (data.user?.email) window.localStorage.setItem("viralscopeLastEmail", data.user.email);
   currentUser = data.user;
   currentWorkspace = data.workspace || currentWorkspace;
   urls = (currentWorkspace?.trackedUrls || []).map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" }));
@@ -3422,6 +3425,7 @@ async function submitAuth(event) {
     email: $("#authEmail").value.trim(),
     password: $("#authPassword").value
   };
+  if (payload.email) window.localStorage.setItem("viralscopeLastEmail", payload.email);
   try {
     const data = await apiRequest(authMode === "signup" ? "/api/auth/signup" : "/api/auth/login", {
       method: "POST",

@@ -70,7 +70,8 @@ const providerConfig = {
     clientIdEnv: "META_CLIENT_ID",
     clientSecretEnv: "META_CLIENT_SECRET",
     scopeSeparator: ",",
-    scopes: ["instagram_basic", "instagram_manage_insights", "pages_show_list", "pages_read_engagement"]
+    scopes: ["public_profile", "email"],
+    advancedScopes: ["pages_show_list", "pages_read_engagement", "instagram_basic", "instagram_manage_insights"]
   },
   facebook: {
     label: "Facebook",
@@ -79,7 +80,8 @@ const providerConfig = {
     clientIdEnv: "META_CLIENT_ID",
     clientSecretEnv: "META_CLIENT_SECRET",
     scopeSeparator: ",",
-    scopes: ["pages_show_list", "pages_read_engagement", "read_insights"]
+    scopes: ["public_profile", "email"],
+    advancedScopes: ["pages_show_list", "pages_read_engagement", "read_insights"]
   },
   tiktok: {
     label: "TikTok",
@@ -918,6 +920,27 @@ async function fetchMetaPages(accessToken) {
   return data.data || [];
 }
 
+async function fetchMetaBasicProfile(accessToken, label = "Meta account") {
+  const data = await httpsJson(graphUrl("/me", accessToken, { fields: "id,name,picture{url}" }));
+  return {
+    id: data.id,
+    title: data.name || label,
+    handle: null,
+    thumbnail: data.picture?.data?.url || null,
+    followers: null,
+    likes: null
+  };
+}
+
+function metaAdvancedAccessPreview(providerLabel, error) {
+  return {
+    range: "Basic Meta login connected",
+    columns: ["profile_connected", "page_insights", "next_step"],
+    totals: [1, 0, 1],
+    error: `${providerLabel} profile login is connected. Page, post, and Instagram insights need Meta advanced access/app review before live metrics can sync.${error?.message ? ` Meta response: ${error.message}` : ""}`
+  };
+}
+
 function metaPageProfile(page) {
   if (!page) return null;
   return {
@@ -978,9 +1001,33 @@ async function fetchFacebookRecentPosts(pageAccessToken, page) {
 }
 
 async function buildInstagramProviderProfile(accessToken) {
-  const pages = await fetchMetaPages(accessToken);
+  let pages = [];
+  try {
+    pages = await fetchMetaPages(accessToken);
+  } catch (error) {
+    const profile = await fetchMetaBasicProfile(accessToken, "Instagram login");
+    return {
+      profile,
+      analyticsPreview: metaAdvancedAccessPreview("Instagram", error),
+      latestContent: []
+    };
+  }
   const page = pages.find((item) => item.instagram_business_account) || pages[0];
   const profile = instagramProfileFromPage(page);
+  if (!profile) {
+    const basicProfile = await fetchMetaBasicProfile(accessToken, "Instagram login");
+    return {
+      profile: basicProfile,
+      analyticsPreview: {
+        ...metaAdvancedAccessPreview("Instagram", null),
+        linkedPage: page?.name || null,
+        error: page
+          ? "Meta login is connected, but this Facebook Page does not expose a linked Instagram Creator/Business account yet."
+          : "Meta login is connected, but no managed Facebook Page was returned yet. Add Page permissions and app review for Instagram insights."
+      },
+      latestContent: []
+    };
+  }
   const latestContent = profile ? await fetchInstagramRecentMedia(page.access_token || accessToken, profile) : [];
   return {
     profile,
@@ -995,9 +1042,30 @@ async function buildInstagramProviderProfile(accessToken) {
 }
 
 async function buildFacebookProviderProfile(accessToken) {
-  const pages = await fetchMetaPages(accessToken);
+  let pages = [];
+  try {
+    pages = await fetchMetaPages(accessToken);
+  } catch (error) {
+    const profile = await fetchMetaBasicProfile(accessToken, "Facebook login");
+    return {
+      profile,
+      analyticsPreview: metaAdvancedAccessPreview("Facebook", error),
+      latestContent: []
+    };
+  }
   const page = pages[0];
   const profile = metaPageProfile(page);
+  if (!profile) {
+    const basicProfile = await fetchMetaBasicProfile(accessToken, "Facebook login");
+    return {
+      profile: basicProfile,
+      analyticsPreview: {
+        ...metaAdvancedAccessPreview("Facebook", null),
+        error: "Facebook login is connected, but no managed Page was returned yet. Add Page permissions and app review for Page insights."
+      },
+      latestContent: []
+    };
+  }
   const latestContent = profile ? await fetchFacebookRecentPosts(page.access_token || accessToken, page) : [];
   return {
     profile,

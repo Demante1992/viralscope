@@ -191,14 +191,14 @@ Other providers share the same start/callback structure and can be hardened next
 Meta Instagram/Facebook OAuth:
 
 - Uses one Meta app for both Instagram and Facebook.
-- Requests `pages_show_list`, `pages_read_engagement`, `instagram_basic`, and `instagram_manage_insights` for Instagram.
-- Requests `pages_show_list`, `pages_read_engagement`, and `read_insights` for Facebook Pages.
+- Requests `public_profile` and `email` for the first production-safe OAuth connection.
 - Exchanges authorization codes server-side.
 - Attempts to exchange Meta's short-lived user token for a longer-lived user token.
-- Fetches managed Pages from Graph API.
-- For Instagram, finds the linked Instagram Business/Creator account from the selected Page.
-- Stores profile metadata, recent Instagram media or Facebook posts, and an immediate metric snapshot.
-- Requires an Instagram Creator/Business account connected to a Facebook Page for Instagram Graph data.
+- Stores basic profile metadata immediately.
+- If advanced Meta permissions are available, fetches managed Pages from Graph API.
+- For Instagram, finds the linked Instagram Business/Creator account from the selected Page when Page permissions are approved.
+- Stores recent Instagram media or Facebook posts and an immediate metric snapshot when those permissions are available.
+- Requires Meta advanced access/app review before real Page, post, and Instagram insight data can sync for production users.
 
 Before using live Meta OAuth on Netlify:
 
@@ -223,6 +223,8 @@ TOKEN_ENCRYPTION_KEY=
 ```
 
 7. Redeploy the site, log into a Pro ViralScope account, then connect Instagram or Facebook.
+
+The current starter flow intentionally avoids requesting `pages_show_list`, `pages_read_engagement`, `read_insights`, `instagram_basic`, and `instagram_manage_insights` during the first OAuth attempt. Those richer scopes can be added after Meta app review/advanced access is approved. If they are requested too early, Meta can show an "Invalid Scopes" error before the user returns to ViralScope.
 
 For local Meta OAuth testing, also add:
 
