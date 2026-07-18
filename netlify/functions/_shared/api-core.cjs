@@ -16,6 +16,7 @@ const appUrl = process.env.APP_URL || process.env.URL || process.env.DEPLOY_URL 
 const blobStoreName = process.env.NETLIFY_BLOBS_STORE || "viralscope-data";
 const blobDbKey = process.env.NETLIFY_BLOBS_DB_KEY || "db.json";
 let blobReadFailed = false;
+let dbDirty = false;
 
 const planEntitlements = {
   free: {
@@ -198,6 +199,7 @@ function readDb() {
 }
 
 function writeDb(db) {
+  dbDirty = true;
   fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
 }
 
@@ -227,6 +229,7 @@ async function loadDbFromBlob() {
 
 async function saveDbToBlob() {
   if (!isNetlifyFunction || !fs.existsSync(dbPath)) return;
+  if (!dbDirty) return;
   if (blobReadFailed) {
     console.warn("Skipping Netlify Blobs write because the read failed; preserving durable account data.");
     return;
@@ -237,6 +240,7 @@ async function saveDbToBlob() {
     const db = JSON.parse(fs.readFileSync(dbPath, "utf8"));
     await store.setJSON(`${blobDbKey}.previous`, db);
     await store.setJSON(blobDbKey, db);
+    dbDirty = false;
   } catch (error) {
     console.warn("Netlify Blobs write failed; request completed without durable persistence.", error.message);
   }
@@ -1984,6 +1988,7 @@ function createNodeResponse() {
 }
 
 exports.handler = async (request) => {
+  dbDirty = false;
   await loadDbFromBlob();
   const req = await requestToNodeRequest(request);
   const { res, toResponse } = createNodeResponse();
