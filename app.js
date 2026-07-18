@@ -1183,6 +1183,7 @@ function applyWorkspaceSourceState() {
 async function refreshSession() {
   try {
     const data = await apiRequest("/api/me");
+    if (!data.user) throw new Error("No saved session.");
     currentUser = data.user;
     currentWorkspace = data.workspace || null;
     updateAccountUi();
@@ -1197,6 +1198,19 @@ async function refreshSession() {
     restoreDemoState();
     updateAccountUi();
   }
+}
+
+async function ensureCurrentSession({ showLogin = true, message = "Log in to continue." } = {}) {
+  if (currentUser) return true;
+  if (sessionToken) {
+    await refreshSession();
+    if (currentUser) return true;
+  }
+  if (showLogin) {
+    openAuthDialog("login");
+    showToast(message);
+  }
+  return false;
 }
 
 async function refreshLaunchReadiness(showResult = false) {
@@ -1454,7 +1468,7 @@ function openUpgradeDialog(featureName = "OAuth connections") {
 }
 
 function isProUser() {
-  return currentUser?.plan === "pro";
+  return ["pro", "studio"].includes(currentUser?.plan);
 }
 
 function requireProFeature(featureName = "this advanced feature") {
@@ -2804,10 +2818,11 @@ function drawAudienceChart() {
   ctx.fillText("returning audience", center, center + 18);
 }
 
-function openConnectDialog() {
-  if (!currentUser) {
-    openAuthDialog("login");
-    showToast("Log in to track URLs, or create a free account if you're new.");
+async function openConnectDialog() {
+  const hasSession = await ensureCurrentSession({
+    message: "Log in to track URLs, or create a free account if you're new."
+  });
+  if (!hasSession) {
     return;
   }
   const dialog = $("#connectDialog");
@@ -2905,9 +2920,10 @@ async function saveConnection(event) {
 
 async function connectOAuth(event) {
   event.preventDefault();
-  if (!currentUser) {
+  if (!(await ensureCurrentSession({ showLogin: false }))) {
     $("#connectDialog").close();
     openAuthDialog("login");
+    showToast("Log in to connect accounts.");
     return;
   }
   if (!["pro", "studio"].includes(currentUser.plan)) {
@@ -3031,7 +3047,7 @@ async function upgradePlan(event) {
     showToast("Free plan selected. Manual URL tracking stays available.");
     return;
   }
-  if (!currentUser) {
+  if (!(await ensureCurrentSession({ showLogin: false }))) {
     $("#upgradeDialog").close();
     openAuthDialog("signup");
     showToast("Create an account first, then checkout can continue.");
@@ -3057,8 +3073,7 @@ async function upgradePlan(event) {
 }
 
 async function openBillingPortal() {
-  if (!currentUser) {
-    openAuthDialog("login");
+  if (!(await ensureCurrentSession())) {
     return;
   }
   try {
@@ -3314,7 +3329,12 @@ function handleBillingReturn() {
         body: JSON.stringify({ sessionId })
       })
         .then((data) => {
+          if (data.sessionToken) {
+            sessionToken = data.sessionToken;
+            window.localStorage.setItem("viralscopeSessionToken", sessionToken);
+          }
           if (data.user) currentUser = data.user;
+          if (data.workspace) currentWorkspace = data.workspace;
           updateAccountUi();
           renderAll();
           showToast(currentUser?.plan === "pro" || currentUser?.plan === "studio" ? "Paid plan confirmed." : "Checkout is still processing.");
@@ -3335,8 +3355,7 @@ function handleBillingReturn() {
   }
   if (oauth === "connected") {
     showToast(`${provider || "Platform"} connected. Metrics will sync into ViralScope.`);
-    refreshSession();
-    renderAll();
+    refreshSession().then(renderAll);
   }
   if (oauth === "failed") {
     showToast(`${provider || "Platform"} OAuth failed. Check credentials, scopes, and app review status.`);
@@ -3409,9 +3428,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#addUrlInline").addEventListener("click", openConnectDialog);
   $("#saveConnection").addEventListener("click", saveConnection);
   $("#connectOAuth").addEventListener("click", connectOAuth);
-  $("#accountButton").addEventListener("click", () => {
-    if (!currentUser) openAuthDialog("login");
-    else if (["pro", "studio"].includes(currentUser.plan)) openSettingsDialog("billing");
+  $("#accountButton").addEventListener("click", async () => {
+    if (!(await ensureCurrentSession())) return;
+    if (["pro", "studio"].includes(currentUser.plan)) openSettingsDialog("billing");
     else openUpgradeDialog();
   });
   $("#toggleAuthMode").addEventListener("click", () => openAuthDialog(authMode === "login" ? "signup" : "login"));

@@ -1659,14 +1659,14 @@ async function handleApi(req, res, url) {
   }
 
   if (url.pathname === "/api/billing/confirm" && req.method === "POST") {
-    if (!session) {
-      sendJson(res, 401, { error: "Log in first." });
-      return;
-    }
     const body = await readBody(req);
     const checkoutSessionId = String(body.sessionId || "").trim();
     if (!checkoutSessionId) {
       sendJson(res, 400, { error: "Checkout session ID is required." });
+      return;
+    }
+    if (!session && !envValue("STRIPE_SECRET_KEY")) {
+      sendJson(res, 401, { error: "Log in first." });
       return;
     }
     if (!envValue("STRIPE_SECRET_KEY")) {
@@ -1687,8 +1687,15 @@ async function handleApi(req, res, url) {
         }
         writeDb(db);
       }
-      const updatedUser = db.users.find((item) => item.id === session.user.id) || session.user;
-      sendJson(res, 200, { user: publicUser(updatedUser), mode: "stripe", checkoutStatus: checkoutSession.status });
+      const userId = session?.user?.id || checkoutSession.metadata?.userId || checkoutSession.client_reference_id;
+      const updatedUser = db.users.find((item) => item.id === userId) || session?.user;
+      if (!updatedUser) {
+        sendJson(res, 404, { error: "Checkout completed, but the matching ViralScope account was not found." });
+        return;
+      }
+      const workspace = db.workspaces.find((item) => item.id === updatedUser.workspaceId);
+      const sessionToken = session ? session.sid : createSession(res, db, updatedUser);
+      sendJson(res, 200, { user: publicUser(updatedUser), workspace: publicWorkspace(workspace), sessionToken, mode: "stripe", checkoutStatus: checkoutSession.status });
       return;
     } catch (error) {
       sendJson(res, 502, { error: error.message });
