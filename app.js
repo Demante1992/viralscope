@@ -420,6 +420,27 @@ let agentSteps = [
   { step: "Create actions", result: "Prepared title test, stream clips, alert rule, and calendar plan." }
 ];
 
+const operationalDemoState = {
+  uploadScores: JSON.parse(JSON.stringify(uploadScores)),
+  revenueStreams: JSON.parse(JSON.stringify(revenueStreams)),
+  calendarItems: JSON.parse(JSON.stringify(calendarItems)),
+  reports: JSON.parse(JSON.stringify(reports)),
+  creatorOsScores: JSON.parse(JSON.stringify(creatorOsScores)),
+  funnelLinks: JSON.parse(JSON.stringify(funnelLinks)),
+  brandDeals: JSON.parse(JSON.stringify(brandDeals)),
+  ownedAudience: JSON.parse(JSON.stringify(ownedAudience)),
+  audienceQuality: JSON.parse(JSON.stringify(audienceQuality)),
+  listeningSignals: JSON.parse(JSON.stringify(listeningSignals)),
+  repurposeJobs: JSON.parse(JSON.stringify(repurposeJobs)),
+  outliers: JSON.parse(JSON.stringify(outliers)),
+  competitors: JSON.parse(JSON.stringify(competitors)),
+  packagingTests: JSON.parse(JSON.stringify(packagingTests)),
+  keywordRows: JSON.parse(JSON.stringify(keywordRows)),
+  alertRules: JSON.parse(JSON.stringify(alertRules)),
+  collections: JSON.parse(JSON.stringify(collections)),
+  agentSteps: JSON.parse(JSON.stringify(agentSteps))
+};
+
 const oauthProviders = {
   YouTube: {
     method: "Google OAuth 2.0",
@@ -868,7 +889,7 @@ function onboardingItems() {
 }
 
 function internalSearchItems() {
-  const contentItems = currentUser ? [] : topContent;
+  const contentItems = currentUser ? liveContentRowsFromSnapshots() : topContent;
   return [
     ...platforms.map((item) => ({ type: "Channel", title: item.name, detail: item.connected ? item.followers : "OAuth needed", view: "channels" })),
     ...contentItems.map((item) => ({ type: "Content", title: item.title, detail: `${item.platform} · ${item.views}`, view: "campaigns" })),
@@ -1000,6 +1021,27 @@ function copyInto(target, source) {
   target.splice(0, target.length, ...source.map((item) => ({ ...item })));
 }
 
+function resetOperationalSurfaces() {
+  uploadScores = operationalDemoState.uploadScores.map((item) => ({ ...item }));
+  revenueStreams = operationalDemoState.revenueStreams.map((item) => ({ ...item }));
+  calendarItems = operationalDemoState.calendarItems.map((item) => ({ ...item }));
+  reports = operationalDemoState.reports.map((item) => ({ ...item }));
+  creatorOsScores = operationalDemoState.creatorOsScores.map((item) => ({ ...item }));
+  funnelLinks = operationalDemoState.funnelLinks.map((item) => ({ ...item }));
+  brandDeals = operationalDemoState.brandDeals.map((item) => ({ ...item }));
+  ownedAudience = operationalDemoState.ownedAudience.map((item) => ({ ...item }));
+  audienceQuality = operationalDemoState.audienceQuality.map((item) => ({ ...item }));
+  listeningSignals = operationalDemoState.listeningSignals.map((item) => ({ ...item }));
+  repurposeJobs = operationalDemoState.repurposeJobs.map((item) => ({ ...item }));
+  outliers = operationalDemoState.outliers.map((item) => ({ ...item }));
+  competitors = operationalDemoState.competitors.map((item) => ({ ...item }));
+  packagingTests = operationalDemoState.packagingTests.map((item) => ({ ...item }));
+  keywordRows = operationalDemoState.keywordRows.map((item) => ({ ...item }));
+  alertRules = operationalDemoState.alertRules.map((item) => ({ ...item }));
+  collections = operationalDemoState.collections.map((item) => ({ ...item }));
+  agentSteps = operationalDemoState.agentSteps.map((item) => ({ ...item }));
+}
+
 function restoreDemoState() {
   copyInto(platforms, demoState.platforms);
   urls = demoState.urls.map((item) => ({ ...item }));
@@ -1009,6 +1051,7 @@ function restoreDemoState() {
   integrations = demoState.integrations.map((item) => ({ ...item }));
   recommendations.fast = demoState.recommendations.fast.map((item) => ({ ...item }));
   recommendations.deep = demoState.recommendations.deep.map((item) => ({ ...item }));
+  resetOperationalSurfaces();
   Object.entries(demoState.channelPreviewData).forEach(([platform, data]) => {
     channelPreviewData[platform] = JSON.parse(JSON.stringify(data));
   });
@@ -1050,6 +1093,71 @@ function applyEmptyMetricState() {
   setMetricText("engagements", "0");
   setMetricText("siteClicks", urls.length ? "0" : "0");
   setMetricText("revenue", "$0");
+}
+
+function connectedPlatformSignals() {
+  const trackedUrls = urls.map((item) => ({ ...item, source: inferPlatformFromUrl(item.url, item.source) }));
+  return platforms
+    .map((platform) => {
+      const snapshot = (metricsSummary?.latest || []).find((item) => item.platform === platform.name);
+      const oauth = (currentUser?.oauthStatus || []).find((item) => item.label === platform.name || item.provider === platform.name.toLowerCase());
+      const platformUrls = trackedUrls.filter((item) => item.source === platform.name || (platform.name === "Website" && item.source === "Website"));
+      const profile = snapshot?.profile || oauth?.profile || null;
+      const metrics = snapshot?.metrics || {};
+      const latestContent = snapshot?.latestContent?.length ? snapshot.latestContent : oauth?.latestContent || [];
+      const connected = Boolean(snapshot || oauth || platformUrls.length);
+      return {
+        platform: platform.name,
+        label: platform.name,
+        connected,
+        snapshot,
+        oauth,
+        profile,
+        metrics,
+        latestContent,
+        trackedUrls: platformUrls,
+        sourceMode: snapshot ? (snapshot.source === "oauth-sync" ? "Live sync" : "Snapshot") : oauth ? "OAuth ready" : platformUrls.length ? "URL tracking" : "Not connected",
+        syncedAt: snapshot?.capturedAt || oauth?.connectedAt || null
+      };
+    })
+    .filter((signal) => signal.connected);
+}
+
+function primaryPlatformSignal() {
+  return connectedPlatformSignals().find((signal) => signal.snapshot || signal.oauth) || connectedPlatformSignals()[0] || null;
+}
+
+function signalAudienceCount(signal) {
+  return signal.metrics?.subscribers || signal.metrics?.followers || signal.profile?.subscribers || signal.profile?.followers || 0;
+}
+
+function signalViewCount(signal) {
+  return signal.metrics?.views || signal.profile?.views || 0;
+}
+
+function signalLatestTitle(signal) {
+  return signal.latestContent?.[0]?.title || `${signal.platform} content`;
+}
+
+function applyGenericPreviewFromSignal(signal) {
+  const preview = channelPreviewData[signal.platform];
+  if (!preview) return;
+  const views = signalViewCount(signal);
+  const audience = signalAudienceCount(signal);
+  preview.name = signal.profile?.title || preview.name.replace(" source", " account");
+  preview.handle = signal.profile?.handle || signal.profile?.customUrl || signal.trackedUrls[0]?.url || preview.handle;
+  preview.latestContent = signal.latestContent || [];
+  preview.posts = signal.latestContent?.length
+    ? signal.latestContent.slice(0, 4).map((item) => item.title)
+    : signal.trackedUrls.length
+      ? signal.trackedUrls.slice(0, 4).map((item) => item.url)
+      : ["Connected", "Ready to sync", "Profile loaded", "Metrics next"];
+  preview.stats = [
+    [compactDisplayNumber(views), signal.platform === "Website" ? "Visits" : "Views"],
+    [compactDisplayNumber(audience), signal.platform === "YouTube" ? "Subscribers" : "Followers"],
+    [signal.snapshot ? "Synced" : signal.oauth ? "Ready" : "URL", signal.snapshot ? "Metrics" : "Source"],
+    [signal.syncedAt ? new Date(signal.syncedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Pending", "Updated"]
+  ];
 }
 
 function liveContentRowsFromSnapshots() {
@@ -1194,6 +1302,127 @@ function applySnapshotChartSeries(snapshot) {
   activeChartPlatforms.add(snapshot.platform);
 }
 
+function applyConnectedOperationalSurfaces() {
+  resetOperationalSurfaces();
+  if (!currentUser) return;
+  const signals = connectedPlatformSignals();
+  if (!signals.length) return;
+  const primary = primaryPlatformSignal() || signals[0];
+  const connectedNames = signals.map((signal) => signal.platform);
+  const latestTitle = signalLatestTitle(primary);
+  const totalViews = (metricsSummary?.totals?.views || signals.reduce((sum, signal) => sum + signalViewCount(signal), 0));
+  const totalRevenue = metricsSummary?.totals?.revenue || 0;
+  const totalClicks = Number(String(metricsSummary?.totals?.clicks || 0).replace(/\D/g, "")) || urls.reduce((sum, item) => sum + (parseFloat(String(item.clicks).replace(/[^\d.]/g, "")) || 0), 0);
+  const audienceCount = signals.reduce((sum, signal) => sum + signalAudienceCount(signal), 0);
+  const latestUpload = primary.latestContent?.[0];
+
+  uploadScores = [
+    { name: "Connected data quality", score: primary.snapshot ? 92 : 76, note: `${primary.platform} is ${primary.snapshot ? "syncing metrics" : "authenticated and ready for first sync"}.` },
+    { name: "Latest content signal", score: latestUpload ? 88 : 64, note: latestUpload ? `"${latestTitle}" is available for review.` : "Connect/sync recent content to unlock deeper upload scoring." },
+    { name: "Audience baseline", score: audienceCount ? 84 : 58, note: `${compactDisplayNumber(audienceCount)} audience signals available across ${connectedNames.join(", ")}.` },
+    { name: "Revenue path", score: totalRevenue ? 82 : 61, note: totalRevenue ? "Revenue snapshots are attached to connected content." : "Add tracked sponsor or offer links to strengthen attribution." },
+    ...operationalDemoState.uploadScores.slice(2, 4)
+  ].slice(0, 6);
+
+  revenueStreams = [
+    { name: `${primary.platform} attention`, value: totalRevenue ? `$${compactDisplayNumber(totalRevenue)}` : "$0", source: `${compactDisplayNumber(totalViews)} connected views`, lift: primary.snapshot ? "+Live" : "Pending" },
+    { name: "Tracked URL clicks", value: compactDisplayNumber(totalClicks), source: urls.length ? `${urls.length} tracked source${urls.length === 1 ? "" : "s"}` : "No tracked URLs yet", lift: urls.length ? "+Ready" : "Add URL" },
+    { name: "Audience proof", value: compactDisplayNumber(audienceCount), source: connectedNames.join(" + "), lift: "+Profile" },
+    ...operationalDemoState.revenueStreams.slice(3)
+  ].slice(0, 6);
+
+  calendarItems = [
+    { day: "Mon", title: `Audit: ${latestTitle}`, platform: primary.platform, status: primary.snapshot ? "Ready" : "Sync first" },
+    { day: "Tue", title: `Repurpose ${primary.platform} winner into Shorts/Reels`, platform: connectedNames.includes("YouTube") ? "Shorts + Reels" : primary.platform, status: latestUpload ? "Draft hooks" : "Plan" },
+    { day: "Wed", title: "Refresh connected metrics and alert baselines", platform: connectedNames.join(" + "), status: "Scheduled" },
+    ...operationalDemoState.calendarItems.slice(3)
+  ].slice(0, 6);
+
+  reports = [
+    { name: `${primary.platform} performance report`, audience: "Creator owner", detail: `${primary.sourceMode}, ${compactDisplayNumber(totalViews)} views, ${compactDisplayNumber(audienceCount)} audience baseline, latest item: ${latestTitle}.`, status: primary.snapshot ? "Ready" : "Needs sync" },
+    { name: "Connected sources summary", audience: "Team", detail: `${connectedNames.length} connected source${connectedNames.length === 1 ? "" : "s"}: ${connectedNames.join(", ")}.`, status: "Live" },
+    ...operationalDemoState.reports.slice(1)
+  ].slice(0, 4);
+
+  creatorOsScores = operationalDemoState.creatorOsScores.map((item) => {
+    if (item.name === "Growth") return { ...item, score: primary.snapshot ? 88 : 74, detail: `${primary.platform} ${primary.snapshot ? "metrics" : "OAuth"} are now feeding the command center.` };
+    if (item.name === "Monetization") return { ...item, score: totalRevenue ? 82 : 68, detail: totalRevenue ? "Connected revenue is available for attribution." : "Attribution is waiting on tracked offers or sponsor links." };
+    if (item.name === "Platform risk") return { ...item, score: Math.min(92, 60 + connectedNames.length * 8), detail: `${connectedNames.length} source${connectedNames.length === 1 ? "" : "s"} connected. Add more platforms to lower dependency risk.` };
+    if (item.name === "Sponsor readiness") return { ...item, score: primary.snapshot ? 86 : 72, detail: "Connected source proof can now power media kits and sponsor reports." };
+    return item;
+  });
+
+  funnelLinks = [
+    { step: "Connected source", tool: primary.platform, visits: compactDisplayNumber(totalViews), conversion: primary.snapshot ? "Synced" : "Ready", insight: `${primary.platform} is now the top-of-funnel source for workspace analysis.` },
+    { step: "Tracked URLs", tool: "Campaign links", visits: compactDisplayNumber(totalClicks), conversion: urls.length ? "Active" : "Pending", insight: urls.length ? "URL clicks can now be reconciled against connected content." : "Add a bio, sponsor, or landing URL to connect attention to action." },
+    ...operationalDemoState.funnelLinks.slice(2)
+  ].slice(0, 4);
+
+  brandDeals = [
+    { brand: `${primary.platform} sponsor proof`, stage: primary.snapshot ? "Ready" : "Needs sync", value: totalRevenue ? `$${compactDisplayNumber(totalRevenue)}` : "TBD", next: `Attach ${primary.platform} performance report and latest content proof.` },
+    ...operationalDemoState.brandDeals.slice(1)
+  ];
+
+  ownedAudience = [
+    { channel: `${primary.platform} audience`, count: compactDisplayNumber(audienceCount), growth: primary.snapshot ? "+Live" : "Ready", health: primary.snapshot ? 86 : 72, note: `${primary.profile?.title || primary.platform} is available as a connected audience source.` },
+    ...operationalDemoState.ownedAudience.slice(1)
+  ];
+
+  audienceQuality = [
+    { label: "Connected account trust", score: primary.oauth ? 92 : 76, detail: `${primary.platform} uses OAuth-backed identity, which is stronger than URL-only tracking.` },
+    { label: "Audience fit", score: audienceCount ? 86 : 68, detail: audienceCount ? `${compactDisplayNumber(audienceCount)} followers/subscribers can be used for sponsor and content-fit analysis.` : "Audience sizing will improve after the first full metric sync." },
+    ...operationalDemoState.audienceQuality.slice(2)
+  ];
+
+  listeningSignals = [
+    { source: `${primary.platform} latest content`, topic: latestTitle, sentiment: primary.snapshot ? "+Live" : "Pending", action: `Review comments, hooks, and audience questions from ${primary.platform}.` },
+    ...operationalDemoState.listeningSignals.slice(1)
+  ];
+
+  repurposeJobs = [
+    { source: latestTitle, output: `${primary.platform} -> Shorts, Reels, newsletter, sponsor proof`, status: latestUpload ? "Ready to cut" : "Needs content sync", score: latestUpload ? 90 : 68 },
+    ...operationalDemoState.repurposeJobs.slice(1)
+  ];
+
+  outliers = [
+    { platform: primary.platform, niche: "Connected workspace", title: latestTitle, creator: primary.profile?.title || currentUser.name, multiplier: primary.snapshot ? "Live" : "Ready", velocity: `${compactDisplayNumber(totalViews)} views tracked`, score: primary.snapshot ? 86 : 70 },
+    ...operationalDemoState.outliers.slice(1)
+  ];
+
+  competitors = [
+    { name: primary.profile?.title || `${primary.platform} account`, subs: compactDisplayNumber(audienceCount), views: compactDisplayNumber(totalViews), cadence: primary.snapshot ? "Synced account" : "OAuth ready", score: primary.snapshot ? 88 : 72 },
+    ...operationalDemoState.competitors.slice(1)
+  ];
+
+  packagingTests = [
+    { variant: "A", title: latestTitle, angle: "Current connected title", ctr: primary.snapshot ? 8.4 : 6.2, score: primary.snapshot ? 82 : 68 },
+    { variant: "B", title: `${primary.platform} audit: what is actually growing right now`, angle: "Outcome-led rewrite from connected data", ctr: primary.snapshot ? 10.6 : 7.4, score: primary.snapshot ? 91 : 76 },
+    ...operationalDemoState.packagingTests.slice(2)
+  ];
+
+  keywordRows = [
+    { keyword: `${primary.platform.toLowerCase()} analytics`, volume: "Connected", competition: "Workspace", intent: "Audit", score: primary.snapshot ? 88 : 74 },
+    { keyword: `${primary.profile?.title || currentUser.name} channel audit`, volume: "Owned", competition: "Low", intent: "Brand search", score: 82 },
+    ...operationalDemoState.keywordRows.slice(2)
+  ];
+
+  alertRules = [
+    { name: `${primary.platform} sync health`, threshold: primary.snapshot ? "Alert if stale > 24h" : "Alert when first sync completes", target: primary.platform, status: "Active" },
+    ...operationalDemoState.alertRules.slice(1)
+  ];
+
+  collections = [
+    { name: `${primary.platform} growth queue`, count: primary.latestContent?.length ? `${primary.latestContent.length} items` : "1 source", detail: `${primary.sourceMode} saved for audits, reports, and repurposing.` },
+    ...operationalDemoState.collections.slice(1)
+  ];
+
+  agentSteps = [
+    { step: "Read connected account", result: `${primary.platform} is available with ${primary.sourceMode.toLowerCase()} status.` },
+    { step: "Build workspace context", result: `${compactDisplayNumber(totalViews)} views, ${compactDisplayNumber(audienceCount)} audience baseline, and ${urls.length} tracked URLs are in scope.` },
+    { step: "Create actions", result: `Prepared content audit, report draft, calendar items, attribution checks, and alert rules from ${primary.platform}.` }
+  ];
+}
+
 function applyWorkspaceSourceState() {
   if (!currentUser) {
     restoreDemoState();
@@ -1325,6 +1554,7 @@ function applyWorkspaceSourceState() {
   if ((currentUser.oauthStatus || []).some((status) => status.tokenStatus !== "reconnect_required")) {
     buildConnectedWorkspaceNarrative();
   }
+  applyConnectedOperationalSurfaces();
   applyEmptyMetricState();
 }
 
@@ -1432,6 +1662,7 @@ function applyMetricsSummary() {
       ];
     }
   });
+  connectedPlatformSignals().forEach(applyGenericPreviewFromSignal);
   integrations = integrations.map((item) => {
     const snapshot = metricsSummary.latest.find((entry) => entry.platform === item.platform);
     if (!snapshot) return item;
@@ -1443,6 +1674,7 @@ function applyMetricsSummary() {
     };
   });
   buildConnectedWorkspaceNarrative();
+  applyConnectedOperationalSurfaces();
 }
 
 function contentCardLabel(item) {
