@@ -477,6 +477,7 @@ let currentUser = null;
 let currentWorkspace = null;
 let metricsSummary = null;
 let latestAiRun = null;
+let sessionToken = window.localStorage.getItem("viralscopeSessionToken") || "";
 let authMode = "login";
 let selectedPlan = "pro";
 let billingInterval = "monthly";
@@ -881,13 +882,19 @@ function internalSearchItems() {
 }
 
 async function apiRequest(path, options = {}) {
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers,
     ...options
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (response.status === 401) {
+      sessionToken = "";
+      window.localStorage.removeItem("viralscopeSessionToken");
+    }
     const error = new Error(data.error || "Request failed.");
     error.status = response.status;
     error.data = data;
@@ -2660,8 +2667,8 @@ function drawAudienceChart() {
 
 function openConnectDialog() {
   if (!currentUser) {
-    openAuthDialog("signup");
-    showToast("Create a free account to track URLs or upgrade for OAuth.");
+    openAuthDialog("login");
+    showToast("Log in to track URLs, or create a free account if you're new.");
     return;
   }
   const dialog = $("#connectDialog");
@@ -2713,7 +2720,7 @@ function renderOAuthPreview() {
 async function saveConnection(event) {
   event.preventDefault();
   if (!currentUser) {
-    openAuthDialog("signup");
+    openAuthDialog("login");
     return;
   }
   const urlInput = $("#urlInput");
@@ -2754,7 +2761,7 @@ async function connectOAuth(event) {
   event.preventDefault();
   if (!currentUser) {
     $("#connectDialog").close();
-    openAuthDialog("signup");
+    openAuthDialog("login");
     return;
   }
   if (currentUser.plan !== "pro") {
@@ -2818,6 +2825,10 @@ function connectOAuthDemoFallback() {
 }
 
 async function applyAuthResult(data, message) {
+  if (data.sessionToken) {
+    sessionToken = data.sessionToken;
+    window.localStorage.setItem("viralscopeSessionToken", sessionToken);
+  }
   currentUser = data.user;
   currentWorkspace = data.workspace || currentWorkspace;
   urls = (currentWorkspace?.trackedUrls || []).map((item) => ({ ...item, clicks: item.clicks || "0", change: "Tracking" }));

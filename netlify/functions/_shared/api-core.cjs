@@ -225,7 +225,9 @@ function parseCookies(req) {
 }
 
 function getSession(req, db) {
-  const sid = parseCookies(req).vs_session;
+  const authHeader = String(req.headers.authorization || "");
+  const bearer = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
+  const sid = parseCookies(req).vs_session || bearer;
   if (!sid || !db.sessions[sid]) return null;
   const session = db.sessions[sid];
   if (session.expiresAt < Date.now()) {
@@ -523,6 +525,7 @@ function createSession(res, db, user) {
   db.sessions[sid] = { userId: user.id, expiresAt: Date.now() + sessionTtlMs };
   writeDb(db);
   res.setHeader("Set-Cookie", `vs_session=${encodeURIComponent(sid)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(sessionTtlMs / 1000)}`);
+  return sid;
 }
 
 function providerSlug(value) {
@@ -1097,8 +1100,8 @@ async function handleApi(req, res, url) {
     db.users.push(user);
     db.workspaces.push(workspace);
     addAudit(db, user, "auth.signup", { email });
-    createSession(res, db, user);
-    sendJson(res, 201, { user: publicUser(user), workspace: publicWorkspace(workspace) });
+    const sessionToken = createSession(res, db, user);
+    sendJson(res, 201, { user: publicUser(user), workspace: publicWorkspace(workspace), sessionToken });
     return;
   }
 
@@ -1116,8 +1119,8 @@ async function handleApi(req, res, url) {
       db.workspaces.push(workspace);
     }
     addAudit(db, user, "auth.login", { email });
-    createSession(res, db, user);
-    sendJson(res, 200, { user: publicUser(user), workspace: publicWorkspace(workspace) });
+    const sessionToken = createSession(res, db, user);
+    sendJson(res, 200, { user: publicUser(user), workspace: publicWorkspace(workspace), sessionToken });
     return;
   }
 
