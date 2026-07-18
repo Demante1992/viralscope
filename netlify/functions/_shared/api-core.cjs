@@ -213,6 +213,11 @@ async function loadDbFromBlob() {
       fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
       return;
     }
+    const backup = await store.get(`${blobDbKey}.previous`, { type: "json" });
+    if (backup) {
+      fs.writeFileSync(dbPath, JSON.stringify(backup, null, 2));
+      return;
+    }
   } catch (error) {
     blobReadFailed = true;
     console.warn("Netlify Blobs read failed; using local function fallback.", error.message);
@@ -229,7 +234,9 @@ async function saveDbToBlob() {
   try {
     const { getStore } = require("@netlify/blobs");
     const store = getStore({ name: blobStoreName, consistency: "strong" });
-    await store.setJSON(blobDbKey, JSON.parse(fs.readFileSync(dbPath, "utf8")));
+    const db = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+    await store.setJSON(`${blobDbKey}.previous`, db);
+    await store.setJSON(blobDbKey, db);
   } catch (error) {
     console.warn("Netlify Blobs write failed; request completed without durable persistence.", error.message);
   }
@@ -322,7 +329,8 @@ function publicUser(user) {
     expiresAt: token.expiresAt,
     tokenStatus: token.tokenStatus || "connected",
     scopes: token.scopes || [],
-    profile: token.profile || null
+    profile: token.profile || null,
+    latestContent: token.latestContent || []
   }));
   return {
     id: user.id,
@@ -389,7 +397,7 @@ function compactNumber(value) {
   return String(Math.round(number));
 }
 
-function createMetricSnapshot({ workspaceId, platform, source = "manual", metrics = {}, profile = null, analyticsPreview = null }) {
+function createMetricSnapshot({ workspaceId, platform, source = "manual", metrics = {}, profile = null, analyticsPreview = null, latestContent = [] }) {
   return {
     id: crypto.randomUUID(),
     workspaceId,
@@ -409,7 +417,8 @@ function createMetricSnapshot({ workspaceId, platform, source = "manual", metric
       revenue: numberOrNull(metrics.revenue)
     },
     profile,
-    analyticsPreview
+    analyticsPreview,
+    latestContent
   };
 }
 
@@ -751,7 +760,7 @@ async function usableAccessToken(db, user, slug) {
 
 async function fetchYouTubeProfile(accessToken) {
   const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
-  channelUrl.searchParams.set("part", "snippet,statistics");
+  channelUrl.searchParams.set("part", "snippet,statistics,contentDetails");
   channelUrl.searchParams.set("mine", "true");
   const channelData = await httpsJson(channelUrl.toString(), {
     headers: { Authorization: `Bearer ${accessToken}` }
@@ -765,8 +774,75 @@ async function fetchYouTubeProfile(accessToken) {
     thumbnail: channel.snippet?.thumbnails?.default?.url || null,
     subscribers: channel.statistics?.subscriberCount || null,
     views: channel.statistics?.viewCount || null,
-    videos: channel.statistics?.videoCount || null
+    videos: channel.statistics?.videoCount || null,
+    uploadsPlaylistId: channel.contentDetails?.relatedPlaylists?.uploads || null
   };
+}
+
+function parseIsoDurationSeconds(duration = "") {
+  const match = String(duration).match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!match) return null;
+  return Number(match[1] || 0) * 3600 + Number(match[2] || 0) * 60 + Number(match[3] || 0);
+}
+
+async function fetchYouTubeRecentContent(accessToken, profile) {
+  if (!profile?.uploadsPlaylistId) return [];
+  const playlistUrl = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
+  playlistUrl.searchParams.set("part", "snippet,contentDetails");
+  playlistUrl.searchParams.set("playlistId", profile.uploadsPlaylistId);
+  playlistUrl.searchParams.set("maxResults", "8");
+  const playlistData = await httpsJson(playlistUrl.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const ids = (playlistData.items || [])
+    .map((item) => item.contentDetails?.videoId)
+    .filter(Boolean);
+  if (!ids.length) return [];
+  const videoUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+  videoUrl.searchParams.set("part", "snippet,statistics,contentDetails,liveStreamingDetails");
+  videoUrl.searchParams.set("id", ids.join(","));
+  const videoData = await httpsJson(videoUrl.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  return (videoData.items || []).map((video) => {
+    const durationSeconds = parseIsoDurationSeconds(video.contentDetails?.duration);
+    const isLive = Boolean(video.liveStreamingDetails);
+    return {
+      id: video.id,
+      title: video.snippet?.title || "Untitled video",
+      publishedAt: video.snippet?.publishedAt || null,
+      thumbnail: video.snippet?.thumbnails?.medium?.url || video.snippet?.thumbnails?.default?.url || null,
+      duration: video.contentDetails?.duration || null,
+      durationSeconds,
+      type: isLive ? "Live" : durationSeconds != null && durationSeconds <= 60 ? "Short" : "Video",
+      views: numberOrNull(video.statistics?.viewCount),
+      likes: numberOrNull(video.statistics?.likeCount),
+      comments: numberOrNull(video.statistics?.commentCount)
+    };
+  });
+}
+
+async function fetchYouTubeTopVideoAnalytics(accessToken) {
+  const end = new Date();
+  const start = new Date(end.getTime() - 28 * 24 * 60 * 60 * 1000);
+  const formatDate = (date) => date.toISOString().slice(0, 10);
+  const analyticsUrl = new URL("https://youtubeanalytics.googleapis.com/v2/reports");
+  analyticsUrl.searchParams.set("ids", "channel==MINE");
+  analyticsUrl.searchParams.set("startDate", formatDate(start));
+  analyticsUrl.searchParams.set("endDate", formatDate(end));
+  analyticsUrl.searchParams.set("dimensions", "video");
+  analyticsUrl.searchParams.set("metrics", "views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration");
+  analyticsUrl.searchParams.set("sort", "-views");
+  analyticsUrl.searchParams.set("maxResults", "8");
+  try {
+    const data = await httpsJson(analyticsUrl.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const columns = data.columnHeaders?.map((item) => item.name) || [];
+    return (data.rows || []).map((row) => Object.fromEntries(columns.map((column, index) => [column, row[index]])));
+  } catch (error) {
+    return { error: error.message };
+  }
 }
 
 async function fetchYouTubeAnalyticsPreview(accessToken) {
@@ -794,13 +870,21 @@ async function fetchYouTubeAnalyticsPreview(accessToken) {
 
 async function buildProviderProfile(slug, accessToken) {
   if (slug === "youtube") {
-    const [profile, analyticsPreview] = await Promise.all([
-      fetchYouTubeProfile(accessToken),
-      fetchYouTubeAnalyticsPreview(accessToken)
+    const profile = await fetchYouTubeProfile(accessToken);
+    const [analyticsPreview, recentContent, topVideoAnalytics] = await Promise.all([
+      fetchYouTubeAnalyticsPreview(accessToken),
+      fetchYouTubeRecentContent(accessToken, profile),
+      fetchYouTubeTopVideoAnalytics(accessToken)
     ]);
-    return { profile, analyticsPreview };
+    const analyticsRows = Array.isArray(topVideoAnalytics) ? topVideoAnalytics : [];
+    const analyticsByVideo = new Map(analyticsRows.map((row) => [row.video, row]));
+    const latestContent = recentContent.map((item) => ({
+      ...item,
+      analytics: analyticsByVideo.get(item.id) || null
+    }));
+    return { profile, analyticsPreview, latestContent, topVideoAnalytics };
   }
-  return { profile: null, analyticsPreview: null };
+  return { profile: null, analyticsPreview: null, latestContent: [] };
 }
 
 function demoYouTubeSnapshot(workspaceId) {
@@ -834,7 +918,13 @@ function demoYouTubeSnapshot(workspaceId) {
       range: "Demo 28 days",
       columns: ["views", "likes", "comments", "shares", "estimatedMinutesWatched", "averageViewDuration"],
       totals: [views, likes, comments, shares, 2_400_000, 214]
-    }
+    },
+    latestContent: [
+      { id: "demo-1", title: "Analytics Are Lying", type: "Video", views: 1_800_000, likes: 92_000, comments: 8_400 },
+      { id: "demo-2", title: "Creator Audit", type: "Live", views: 214_000, likes: 18_000, comments: 2_100 },
+      { id: "demo-3", title: "Viral Signals", type: "Short", views: 928_000, likes: 74_000, comments: 5_900 },
+      { id: "demo-4", title: "Sponsor Fix", type: "Video", views: 640_000, likes: 41_000, comments: 3_200 }
+    ]
   });
 }
 
@@ -870,6 +960,7 @@ async function syncYouTubeMetrics(db, user) {
       source: "oauth-sync",
       profile,
       analyticsPreview: providerData.analyticsPreview,
+      latestContent: providerData.latestContent || [],
       metrics: {
         views: metricByColumn.views ?? profile.views,
         subscribers: profile.subscribers,
@@ -884,6 +975,8 @@ async function syncYouTubeMetrics(db, user) {
       ...currentToken,
       profile,
       analyticsPreview: providerData.analyticsPreview,
+      latestContent: providerData.latestContent || [],
+      topVideoAnalytics: providerData.topVideoAnalytics || [],
       lastSyncedAt: snapshot.capturedAt,
       tokenStatus: providerData.analyticsPreview?.error ? "partial_sync" : "synced"
     };
@@ -1266,6 +1359,36 @@ async function handleApi(req, res, url) {
       return;
     }
     sendJson(res, 200, summarizeMetrics(db, session.user.workspaceId));
+    return;
+  }
+
+  if (url.pathname === "/api/data/health" && req.method === "GET") {
+    if (!session) {
+      sendJson(res, 401, { error: "Log in first." });
+      return;
+    }
+    sendJson(res, 200, {
+      mode: isNetlifyFunction ? "netlify-blobs" : "local-json",
+      store: isNetlifyFunction ? `${blobStoreName}/${blobDbKey}` : "data/db.json",
+      readHealthy: !blobReadFailed,
+      backupKey: isNetlifyFunction ? `${blobDbKey}.previous` : null,
+      counts: {
+        users: db.users.length,
+        workspaces: db.workspaces.length,
+        sessions: Object.keys(db.sessions || {}).length,
+        oauthStates: Object.keys(db.oauthStates || {}).length,
+        metricSnapshots: db.metricSnapshots.length,
+        syncRuns: db.syncRuns.length,
+        trackedUrls: db.workspaces.find((item) => item.id === session.user.workspaceId)?.trackedUrls?.length || 0
+      },
+      currentUser: {
+        id: session.user.id,
+        email: session.user.email,
+        plan: session.user.plan,
+        connections: session.user.connections || [],
+        oauthProviders: Object.keys(session.user.oauthTokens || {})
+      }
+    });
     return;
   }
 

@@ -1139,6 +1139,7 @@ function applyWorkspaceSourceState() {
         [status.tokenStatus === "reconnect_required" ? "Reconnect" : "Connected", "OAuth"],
         [status.expiresAt ? "Ready" : "Pending", "First sync"]
       ];
+      preview.latestContent = status.latestContent || [];
       preview.posts = status.tokenStatus === "reconnect_required"
         ? ["Reconnect needed", "Token expired", "Open OAuth", "Resume sync"]
         : ["OAuth connected", "Ready to sync", "Channel profile", "Metrics next"];
@@ -1258,6 +1259,7 @@ function applyMetricsSummary() {
     if (snapshot.platform === "YouTube" && snapshot.profile) {
       channelPreviewData.YouTube.name = snapshot.profile.title || channelPreviewData.YouTube.name;
       channelPreviewData.YouTube.handle = snapshot.profile.handle || channelPreviewData.YouTube.handle;
+      channelPreviewData.YouTube.latestContent = snapshot.latestContent || [];
       channelPreviewData.YouTube.stats = [
         [compactDisplayNumber(snapshot.metrics?.views || snapshot.profile.views || 0), "Views"],
         [compactDisplayNumber(snapshot.metrics?.subscribers || snapshot.profile.subscribers || 0), "Subscribers"],
@@ -1266,6 +1268,31 @@ function applyMetricsSummary() {
       ];
     }
   });
+}
+
+function contentCardLabel(item) {
+  const views = item?.analytics?.views ?? item?.views;
+  const comments = item?.analytics?.comments ?? item?.comments;
+  if (views != null) return `${compactDisplayNumber(views)} views`;
+  if (comments != null) return `${compactDisplayNumber(comments)} comments`;
+  return item?.type || "Content";
+}
+
+function contentPostsForTab(data, tab) {
+  const content = data.latestContent || [];
+  if (!content.length) return null;
+  const filtered = tab === "Shorts"
+    ? content.filter((item) => item.type === "Short")
+    : tab === "Live"
+      ? content.filter((item) => item.type === "Live")
+      : tab === "Videos"
+        ? content.filter((item) => item.type !== "Short" && item.type !== "Live")
+        : content;
+  const items = filtered.length ? filtered : content;
+  return items.slice(0, 4).map((item) => ({
+    title: item.title,
+    meta: contentCardLabel(item)
+  }));
 }
 
 async function refreshMetricsSummary(showResult = false) {
@@ -1858,6 +1885,8 @@ function renderChannelPreview() {
     body: `${activeTab} data for ${previewPlatform} will appear here as the connector deepens.`,
     posts: data.posts
   };
+  const contentPosts = contentPostsForTab(data, activeTab);
+  const postCards = contentPosts || tabState.posts.map((post) => ({ title: post, meta: activeTab }));
   $("#previewSwitcher").innerHTML = Object.keys(channelPreviewData)
     .map(
       (platform) => `
@@ -1895,7 +1924,7 @@ function renderChannelPreview() {
         <span class="data-pill">${platforms.find((item) => item.name === previewPlatform)?.connected ? "Connected" : "Preview mode"}</span>
       </div>
       <div class="preview-post-grid">
-        ${tabState.posts.map((post, index) => `<article class="preview-post"><small>${activeTab} ${index + 1}</small><strong>${post}</strong></article>`).join("")}
+        ${postCards.map((post, index) => `<article class="preview-post"><small>${post.meta || `${activeTab} ${index + 1}`}</small><strong>${post.title}</strong></article>`).join("")}
       </div>
     </section>
   `;
