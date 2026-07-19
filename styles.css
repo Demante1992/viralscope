@@ -2131,6 +2131,7 @@ canvas {
 }
 
 .preview-avatar {
+  overflow: hidden;
   display: grid;
   width: 88px;
   height: 88px;
@@ -2143,6 +2144,12 @@ canvas {
   background:
     linear-gradient(135deg, rgba(247, 243, 234, 0.94), rgba(46, 211, 183, 0.72)),
     var(--surface-2);
+}
+
+.preview-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .preview-profile h4 {
@@ -2181,6 +2188,8 @@ canvas {
 }
 
 .preview-post {
+  position: relative;
+  overflow: hidden;
   min-height: 132px;
   padding: 12px;
   border-radius: var(--radius);
@@ -2189,9 +2198,45 @@ canvas {
     rgba(255, 255, 255, 0.08);
 }
 
+.preview-post.has-thumbnail {
+  padding: 0;
+  background: #0d1114;
+}
+
+.preview-post.has-thumbnail img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.86;
+}
+
+.preview-post.has-thumbnail::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.78));
+}
+
+.preview-post-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 132px;
+  padding: 12px;
+}
+
 .preview-post strong {
   display: block;
   margin-top: 48px;
+}
+
+.preview-post.has-thumbnail strong {
+  margin-top: 8px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.72);
 }
 
 .preview-post small {

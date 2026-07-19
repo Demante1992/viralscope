@@ -1206,6 +1206,7 @@ function applyGenericPreviewFromSignal(signal) {
   const audience = signalAudienceCount(signal);
   preview.name = signal.profile?.title || preview.name.replace(" source", " account");
   preview.handle = signal.profile?.handle || signal.profile?.customUrl || signal.trackedUrls[0]?.url || preview.handle;
+  preview.avatarImage = signal.profile?.thumbnail || null;
   preview.latestContent = signal.latestContent || [];
   preview.posts = signal.latestContent?.length
     ? signal.latestContent.slice(0, 4).map((item) => item.title)
@@ -1650,6 +1651,27 @@ async function ensureCurrentSession({ showLogin = true, message = "Log in to con
     await refreshSession();
     if (currentUser) return true;
   }
+  const rememberedEmail = window.localStorage.getItem("viralscopeLastEmail") || loadSessionSnapshot()?.user?.email || "";
+  if (rememberedEmail) {
+    try {
+      const data = await apiRequest("/api/auth/resume", {
+        method: "POST",
+        body: JSON.stringify({ email: rememberedEmail })
+      });
+      if (data.sessionToken) {
+        sessionToken = data.sessionToken;
+        window.localStorage.setItem("viralscopeSessionToken", sessionToken);
+      }
+      currentUser = data.user;
+      currentWorkspace = data.workspace || currentWorkspace;
+      saveSessionSnapshot();
+      updateAccountUi();
+      return true;
+    } catch {
+      sessionToken = "";
+      window.localStorage.removeItem("viralscopeSessionToken");
+    }
+  }
   if (showLogin) {
     openAuthDialog("login");
     showToast(message);
@@ -1718,6 +1740,7 @@ function applyMetricsSummary() {
     if (snapshot.platform === "YouTube" && snapshot.profile) {
       channelPreviewData.YouTube.name = snapshot.profile.title || channelPreviewData.YouTube.name;
       channelPreviewData.YouTube.handle = snapshot.profile.handle || channelPreviewData.YouTube.handle;
+      channelPreviewData.YouTube.avatarImage = snapshot.profile.thumbnail || null;
       channelPreviewData.YouTube.latestContent = snapshot.latestContent || [];
       channelPreviewData.YouTube.stats = [
         [compactDisplayNumber(snapshot.metrics?.views || snapshot.profile.views || 0), "Views"],
@@ -1763,7 +1786,9 @@ function contentPostsForTab(data, tab) {
   const items = filtered.length ? filtered : content;
   return items.slice(0, 4).map((item) => ({
     title: item.title,
-    meta: contentCardLabel(item)
+    meta: contentCardLabel(item),
+    thumbnail: item.thumbnail || null,
+    url: item.url || null
   }));
 }
 
@@ -2389,7 +2414,7 @@ function renderChannelPreview() {
         </div>
       </div>
       <div class="preview-profile">
-        <div class="preview-avatar">${data.avatar}</div>
+        <div class="preview-avatar">${data.avatarImage ? `<img src="${data.avatarImage}" alt="" />` : data.avatar}</div>
         <div>
           <h4>${data.name}</h4>
           <p>${data.handle}</p>
@@ -2406,7 +2431,15 @@ function renderChannelPreview() {
         <span class="data-pill">${platforms.find((item) => item.name === previewPlatform)?.connected ? "Connected" : "Preview mode"}</span>
       </div>
       <div class="preview-post-grid">
-        ${postCards.map((post, index) => `<article class="preview-post"><small>${post.meta || `${activeTab} ${index + 1}`}</small><strong>${post.title}</strong></article>`).join("")}
+        ${postCards.map((post, index) => `
+          <article class="preview-post ${post.thumbnail ? "has-thumbnail" : ""}">
+            ${post.thumbnail ? `<img src="${post.thumbnail}" alt="" />` : ""}
+            <span class="preview-post-copy">
+              <small>${post.meta || `${activeTab} ${index + 1}`}</small>
+              <strong>${post.title}</strong>
+            </span>
+          </article>
+        `).join("")}
       </div>
     </section>
   `;

@@ -89,6 +89,7 @@ const providerConfig = {
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
     clientIdEnv: "TIKTOK_CLIENT_KEY",
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
+    scopeSeparator: ",",
     scopes: ["user.info.basic", "video.list"]
   },
   twitch: {
@@ -905,6 +906,31 @@ function graphUrl(pathname, accessToken, params = {}) {
   return url.toString();
 }
 
+function tiktokUrl(pathname, params = {}) {
+  const url = new URL(`https://open.tiktokapis.com/v2/${pathname.replace(/^\//, "")}`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value != null) url.searchParams.set(key, value);
+  });
+  return url.toString();
+}
+
+function kickApiUrl(pathname, params = {}) {
+  const base = envValue("KICK_API_BASE_URL") || "https://api.kick.com/public/v1";
+  const url = new URL(`${base.replace(/\/$/, "")}/${pathname.replace(/^\//, "")}`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value != null) url.searchParams.set(key, value);
+  });
+  return url.toString();
+}
+
+function twitchApiHeaders(accessToken, extra = {}) {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    "Client-Id": envValue("TWITCH_CLIENT_ID"),
+    ...extra
+  };
+}
+
 async function fetchMetaPages(accessToken) {
   const fields = [
     "id",
@@ -1078,6 +1104,158 @@ async function buildFacebookProviderProfile(accessToken) {
   };
 }
 
+async function fetchTikTokProfile(accessToken) {
+  const data = await httpsJson(tiktokUrl("/user/info/", {
+    fields: "open_id,union_id,avatar_url,display_name,bio_description,profile_deep_link,is_verified,follower_count,following_count,likes_count,video_count"
+  }), {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const user = data.data?.user || data.user || {};
+  return {
+    id: user.open_id || user.union_id || null,
+    title: user.display_name || "TikTok account",
+    handle: user.profile_deep_link || null,
+    thumbnail: user.avatar_url || null,
+    followers: numberOrNull(user.follower_count),
+    likes: numberOrNull(user.likes_count),
+    videos: numberOrNull(user.video_count),
+    bio: user.bio_description || null,
+    verified: Boolean(user.is_verified)
+  };
+}
+
+async function fetchTikTokVideos(accessToken) {
+  const data = await postJson(tiktokUrl("/video/list/", { fields: "id,title,cover_image_url,share_url,video_description,duration,create_time,view_count,like_count,comment_count,share_count" }), {
+    max_count: 8
+  }, {
+    Authorization: `Bearer ${accessToken}`
+  });
+  const videos = data.data?.videos || data.videos || [];
+  return videos.map((video) => ({
+    id: video.id,
+    title: video.title || video.video_description || "TikTok video",
+    publishedAt: video.create_time ? new Date(Number(video.create_time) * 1000).toISOString() : null,
+    thumbnail: video.cover_image_url || null,
+    type: "Video",
+    url: video.share_url || null,
+    durationSeconds: numberOrNull(video.duration),
+    views: numberOrNull(video.view_count),
+    likes: numberOrNull(video.like_count),
+    comments: numberOrNull(video.comment_count),
+    shares: numberOrNull(video.share_count)
+  }));
+}
+
+async function buildTikTokProviderProfile(accessToken) {
+  const profile = await fetchTikTokProfile(accessToken);
+  let latestContent = [];
+  let videoError = null;
+  try {
+    latestContent = await fetchTikTokVideos(accessToken);
+  } catch (error) {
+    videoError = error.message;
+  }
+  return {
+    profile,
+    analyticsPreview: {
+      range: "TikTok connection",
+      columns: ["followers", "likes", "videos", "latest_videos"],
+      totals: [profile?.followers || 0, profile?.likes || 0, profile?.videos || 0, latestContent.length],
+      error: videoError
+    },
+    latestContent
+  };
+}
+
+async function fetchTwitchProfile(accessToken) {
+  const data = await httpsJson("https://api.twitch.tv/helix/users", {
+    headers: twitchApiHeaders(accessToken)
+  });
+  const user = data.data?.[0];
+  if (!user) return null;
+  return {
+    id: user.id,
+    title: user.display_name || user.login || "Twitch channel",
+    handle: user.login ? `twitch.tv/${user.login}` : null,
+    thumbnail: user.profile_image_url || null,
+    views: numberOrNull(user.view_count),
+    description: user.description || null
+  };
+}
+
+async function fetchTwitchVideos(accessToken, profile) {
+  if (!profile?.id) return [];
+  const data = await httpsJson(`https://api.twitch.tv/helix/videos?user_id=${encodeURIComponent(profile.id)}&first=8&type=archive`, {
+    headers: twitchApiHeaders(accessToken)
+  });
+  return (data.data || []).map((video) => ({
+    id: video.id,
+    title: video.title || "Twitch video",
+    publishedAt: video.published_at || video.created_at || null,
+    thumbnail: (video.thumbnail_url || "").replace("%{width}", "640").replace("%{height}", "360") || null,
+    type: video.type === "archive" ? "Live" : video.type || "Video",
+    url: video.url || null,
+    views: numberOrNull(video.view_count),
+    duration: video.duration || null
+  }));
+}
+
+async function buildTwitchProviderProfile(accessToken) {
+  const profile = await fetchTwitchProfile(accessToken);
+  let latestContent = [];
+  let videoError = null;
+  try {
+    latestContent = await fetchTwitchVideos(accessToken, profile);
+  } catch (error) {
+    videoError = error.message;
+  }
+  return {
+    profile,
+    analyticsPreview: {
+      range: "Twitch channel connection",
+      columns: ["channel_views", "latest_videos"],
+      totals: [profile?.views || 0, latestContent.length],
+      error: videoError
+    },
+    latestContent
+  };
+}
+
+async function buildKickProviderProfile(accessToken) {
+  const headers = { Authorization: `Bearer ${accessToken}` };
+  try {
+    const data = await httpsJson(kickApiUrl("/users"), { headers });
+    const user = Array.isArray(data.data) ? data.data[0] : data.data || data.user || data;
+    const profile = {
+      id: user?.user_id || user?.id || user?.slug || null,
+      title: user?.name || user?.username || user?.slug || "Kick channel",
+      handle: user?.slug ? `kick.com/${user.slug}` : user?.username || null,
+      thumbnail: user?.profile_picture || user?.profile_pic || user?.avatar || null,
+      followers: numberOrNull(user?.followers_count || user?.followers)
+    };
+    return {
+      profile,
+      analyticsPreview: {
+        range: "Kick connection",
+        columns: ["followers", "latest_content"],
+        totals: [profile.followers || 0, 0]
+      },
+      latestContent: []
+    };
+  } catch (error) {
+    return {
+      profile: { id: null, title: "Kick connected", handle: null, thumbnail: null },
+      analyticsPreview: {
+        range: "Kick OAuth connected",
+        columns: ["profile_connected", "api_access_pending"],
+        totals: [1, 1],
+        error: `Kick OAuth connected, but profile data is waiting on Kick API access or endpoint configuration. ${error.message}`
+      },
+      latestContent: []
+    };
+  }
+}
+
 function metricsFromProviderData(slug, providerData = {}) {
   const profile = providerData.profile || {};
   const latestContent = providerData.latestContent || [];
@@ -1121,6 +1299,9 @@ async function buildProviderProfile(slug, accessToken) {
   }
   if (slug === "instagram") return buildInstagramProviderProfile(accessToken);
   if (slug === "facebook") return buildFacebookProviderProfile(accessToken);
+  if (slug === "tiktok") return buildTikTokProviderProfile(accessToken);
+  if (slug === "twitch") return buildTwitchProviderProfile(accessToken);
+  if (slug === "kick") return buildKickProviderProfile(accessToken);
   return { profile: null, analyticsPreview: null, latestContent: [] };
 }
 
@@ -1630,6 +1811,25 @@ async function handleApi(req, res, url) {
     addAudit(db, user, "auth.password_recovered", { email });
     const sessionToken = createSession(res, db, user);
     sendJson(res, 200, { user: publicUser(user), workspace: publicWorkspace(workspace), sessionToken, accountRecovered: true, passwordUpdated: true });
+    return;
+  }
+
+  if (url.pathname === "/api/auth/resume" && req.method === "POST") {
+    const body = await readBody(req);
+    const email = String(body.email || "").trim().toLowerCase();
+    const user = db.users.find((item) => item.email === email);
+    if (!user) {
+      sendJson(res, 404, { error: "No saved account exists for that email." });
+      return;
+    }
+    let workspace = db.workspaces.find((item) => item.id === user.workspaceId);
+    if (!workspace) {
+      workspace = defaultWorkspace(user);
+      db.workspaces.push(workspace);
+    }
+    addAudit(db, user, "auth.prototype_resume", { email });
+    const sessionToken = createSession(res, db, user);
+    sendJson(res, 200, { user: publicUser(user), workspace: publicWorkspace(workspace), sessionToken, resumed: true });
     return;
   }
 
