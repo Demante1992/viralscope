@@ -1607,6 +1607,32 @@ async function handleApi(req, res, url) {
     return;
   }
 
+  if (url.pathname === "/api/auth/recover" && req.method === "POST") {
+    const body = await readBody(req);
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    const user = db.users.find((item) => item.email === email);
+    if (!email.includes("@") || password.length < 8) {
+      sendJson(res, 400, { error: "Use your email and a new password with at least 8 characters." });
+      return;
+    }
+    if (!user) {
+      sendJson(res, 404, { error: "No account exists for that email yet. Create account first." });
+      return;
+    }
+    user.passwordHash = hashPassword(password);
+    user.recoveredAt = new Date().toISOString();
+    let workspace = db.workspaces.find((item) => item.id === user.workspaceId);
+    if (!workspace) {
+      workspace = defaultWorkspace(user);
+      db.workspaces.push(workspace);
+    }
+    addAudit(db, user, "auth.password_recovered", { email });
+    const sessionToken = createSession(res, db, user);
+    sendJson(res, 200, { user: publicUser(user), workspace: publicWorkspace(workspace), sessionToken, accountRecovered: true, passwordUpdated: true });
+    return;
+  }
+
   if (url.pathname === "/api/auth/logout" && req.method === "POST") {
     if (session) delete db.sessions[session.sid];
     writeDb(db);

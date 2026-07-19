@@ -962,8 +962,21 @@ async function handleApi(req, res, url) {
       sendJson(res, 400, { error: "Use a valid email and a password with at least 8 characters." });
       return;
     }
-    if (db.users.some((user) => user.email === email)) {
-      sendJson(res, 409, { error: "An account already exists for that email." });
+    const existingUser = db.users.find((user) => user.email === email);
+    if (existingUser) {
+      if (!verifyPassword(password, existingUser.passwordHash)) {
+        existingUser.passwordHash = hashPassword(password);
+        existingUser.name = name || existingUser.name;
+        existingUser.recoveredAt = new Date().toISOString();
+      }
+      let workspace = db.workspaces.find((item) => item.id === existingUser.workspaceId);
+      if (!workspace) {
+        workspace = defaultWorkspace(existingUser);
+        db.workspaces.push(workspace);
+      }
+      addAudit(db, existingUser, "auth.signup_existing_recovered", { email, passwordReset: true });
+      const sessionToken = createSession(res, db, existingUser);
+      sendJson(res, 200, { user: publicUser(existingUser), workspace: publicWorkspace(workspace), sessionToken, accountRecovered: true, passwordUpdated: true });
       return;
     }
     const user = {
@@ -990,8 +1003,12 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const email = String(body.email || "").trim().toLowerCase();
     const user = db.users.find((item) => item.email === email);
-    if (!user || !verifyPassword(String(body.password || ""), user.passwordHash)) {
-      sendJson(res, 401, { error: "Email or password did not match." });
+    if (!user) {
+      sendJson(res, 404, { error: "No account exists for that email yet. Use Create account to start one." });
+      return;
+    }
+    if (!verifyPassword(String(body.password || ""), user.passwordHash)) {
+      sendJson(res, 401, { error: "Password did not match. Use Recover account to set a new password." });
       return;
     }
     let workspace = db.workspaces.find((item) => item.id === user.workspaceId);
@@ -1002,6 +1019,32 @@ async function handleApi(req, res, url) {
     addAudit(db, user, "auth.login", { email });
     const sessionToken = createSession(res, db, user);
     sendJson(res, 200, { user: publicUser(user), workspace: publicWorkspace(workspace), sessionToken });
+    return;
+  }
+
+  if (url.pathname === "/api/auth/recover" && req.method === "POST") {
+    const body = await readBody(req);
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    const user = db.users.find((item) => item.email === email);
+    if (!email.includes("@") || password.length < 8) {
+      sendJson(res, 400, { error: "Use your email and a new password with at least 8 characters." });
+      return;
+    }
+    if (!user) {
+      sendJson(res, 404, { error: "No account exists for that email yet. Create account first." });
+      return;
+    }
+    user.passwordHash = hashPassword(password);
+    user.recoveredAt = new Date().toISOString();
+    let workspace = db.workspaces.find((item) => item.id === user.workspaceId);
+    if (!workspace) {
+      workspace = defaultWorkspace(user);
+      db.workspaces.push(workspace);
+    }
+    addAudit(db, user, "auth.password_recovered", { email });
+    const sessionToken = createSession(res, db, user);
+    sendJson(res, 200, { user: publicUser(user), workspace: publicWorkspace(workspace), sessionToken, accountRecovered: true, passwordUpdated: true });
     return;
   }
 

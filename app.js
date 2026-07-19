@@ -959,6 +959,25 @@ function hydrateSessionSnapshot() {
   return true;
 }
 
+async function logoutAccount() {
+  try {
+    await apiRequest("/api/auth/logout", { method: "POST", body: JSON.stringify({}) });
+  } catch {
+    // Local sign-out should still complete if the server session already expired.
+  }
+  sessionToken = "";
+  currentUser = null;
+  currentWorkspace = null;
+  metricsSummary = null;
+  window.localStorage.removeItem("viralscopeSessionToken");
+  window.localStorage.removeItem(sessionSnapshotKey);
+  $("#settingsDialog")?.close();
+  restoreDemoState();
+  updateAccountUi();
+  renderAll();
+  showToast("Logged out.");
+}
+
 function formatBadge(platform) {
   const item = platforms.find((entry) => entry.name === platform) || platforms[4];
   return `<span class="platform-badge ${item.className}" title="${item.name}">${platformIcons[item.name] || item.short}</span>`;
@@ -1831,9 +1850,11 @@ function compactDisplayNumber(value) {
 
 function openAuthDialog(mode = "login") {
   authMode = mode;
-  $("#authTitle").textContent = mode === "signup" ? "Create account" : "Log in";
-  $("#toggleAuthMode").textContent = mode === "signup" ? "I already have an account" : "Create account";
+  $("#authTitle").textContent = mode === "signup" ? "Create account" : mode === "recover" ? "Recover account" : "Log in";
+  $("#toggleAuthMode").textContent = mode === "signup" || mode === "recover" ? "Back to log in" : "Create account";
   document.querySelector(".auth-name-field").classList.toggle("is-hidden", mode !== "signup");
+  $("#recoverAuthMode").classList.toggle("is-hidden", mode === "recover");
+  $("#authPassword").placeholder = mode === "recover" ? "New password, at least 8 characters" : "At least 8 characters";
   const rememberedEmail = window.localStorage.getItem("viralscopeLastEmail") || "";
   if (rememberedEmail && !$("#authEmail").value.trim()) $("#authEmail").value = rememberedEmail;
   const dialog = $("#authDialog");
@@ -2660,7 +2681,8 @@ function settingControls(id) {
       <div class="settings-control"><label>Creator name</label><input value="${userName}" /></div>
       <div class="settings-control"><label>Email</label><input value="${userEmail}" /></div>
       <div class="settings-control"><label>Timezone</label><select><option>America/Chicago</option><option>America/New_York</option><option>America/Los_Angeles</option></select></div>
-      <div class="settings-control"><label>Password</label><button class="secondary-button" type="button">Send reset link</button></div>
+      <div class="settings-control"><label>Password</label><button class="secondary-button" type="button" id="settingsRecoverAccount">Reset password</button></div>
+      <div class="settings-control"><label>Session</label><strong>${currentUser ? "Signed in" : "Guest"}</strong><button class="secondary-button" type="button" id="settingsLogout">Log out</button></div>
     `,
     billing: `
       <div class="settings-control"><label>Current plan</label><strong>${isPro ? "Pro active - $29/mo" : "Free"}</strong><button class="${isPro ? "secondary-button" : "primary-button"}" type="button" id="settingsUpgrade">${isPro ? "Manage billing" : "Upgrade to Pro"}</button></div>
@@ -2741,6 +2763,13 @@ function renderSettingsModal() {
       return;
     }
     openUpgradeDialog();
+  });
+  $("#settingsRecoverAccount")?.addEventListener("click", () => {
+    $("#settingsDialog").close();
+    openAuthDialog("recover");
+  });
+  $("#settingsLogout")?.addEventListener("click", async () => {
+    await logoutAccount();
   });
 }
 
@@ -3465,8 +3494,9 @@ async function submitAuth(event) {
     password: $("#authPassword").value
   };
   if (payload.email) window.localStorage.setItem("viralscopeLastEmail", payload.email);
+  const endpoint = authMode === "signup" ? "/api/auth/signup" : authMode === "recover" ? "/api/auth/recover" : "/api/auth/login";
   try {
-    const data = await apiRequest(authMode === "signup" ? "/api/auth/signup" : "/api/auth/login", {
+    const data = await apiRequest(endpoint, {
       method: "POST",
       body: JSON.stringify(payload)
     });
@@ -3487,9 +3517,9 @@ async function submitAuth(event) {
       }
     }
     if (authMode === "login" && (error.status === 401 || error.status === 404)) {
-      openAuthDialog("signup");
+      openAuthDialog(error.status === 401 ? "recover" : "signup");
       showToast(error.status === 401
-        ? "Password mismatch. Use Create account with this email to recover and set a new password."
+        ? "Password mismatch. Use Recover account to set a new password."
         : "No account found. Create one with this email to start.");
       return;
     }
@@ -3900,6 +3930,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     else openUpgradeDialog();
   });
   $("#toggleAuthMode").addEventListener("click", () => openAuthDialog(authMode === "login" ? "signup" : "login"));
+  $("#recoverAuthMode").addEventListener("click", () => openAuthDialog("recover"));
   $("#submitAuth").addEventListener("click", submitAuth);
   $("#upgradePlan").addEventListener("click", upgradePlan);
   $("#upgradeDialog").addEventListener("click", (event) => {
