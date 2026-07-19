@@ -106,19 +106,48 @@ button {
   width: 44px;
   height: 44px;
   place-items: center;
-  color: #0d1114;
-  font-weight: 900;
-  background: linear-gradient(135deg, var(--teal), var(--amber));
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 950;
+  background:
+    radial-gradient(circle at 68% 30%, rgba(255, 255, 255, 0.92) 0 3px, transparent 4px),
+    linear-gradient(135deg, rgba(46, 211, 183, 0.22), rgba(105, 167, 255, 0.18)),
+    #0d1114;
+  border: 1px solid rgba(46, 211, 183, 0.52);
   border-radius: var(--radius);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 24px rgba(46, 211, 183, 0.22);
+}
+
+.brand-mark span {
+  position: relative;
+  z-index: 1;
+  font-size: 1.25rem;
+  letter-spacing: 0;
 }
 
 .brand-mark::after {
   position: absolute;
-  inset: 9px;
+  inset: 8px;
   content: "";
-  border: 1px solid rgba(13, 17, 20, 0.42);
+  border: 1px solid rgba(244, 188, 80, 0.66);
+  border-left-color: transparent;
   border-radius: 50%;
   transform: rotateX(64deg) rotateZ(-28deg);
+}
+
+.brand-mark::before {
+  position: absolute;
+  right: 6px;
+  bottom: 7px;
+  width: 13px;
+  height: 2px;
+  content: "";
+  background: var(--coral);
+  border-radius: 99px;
+  box-shadow: 0 0 12px rgba(255, 113, 97, 0.7);
+  transform: rotate(-28deg);
 }
 
 .product-lockup {
@@ -3487,17 +3516,21 @@ body::after {
 .brand-mark {
   width: 48px;
   height: 48px;
-  color: #050608;
-  background: linear-gradient(135deg, var(--teal), #f3fbff 52%, var(--coral));
-  clip-path: polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%);
-  box-shadow: 0 0 28px rgba(101, 246, 255, 0.28);
+  color: var(--text);
+  background:
+    radial-gradient(circle at 68% 30%, rgba(255, 255, 255, 0.92) 0 3px, transparent 4px),
+    linear-gradient(135deg, rgba(101, 246, 255, 0.2), rgba(255, 113, 97, 0.16)),
+    #050608;
+  clip-path: none;
+  box-shadow: 0 0 28px rgba(101, 246, 255, 0.22);
 }
 
 .brand-mark::after {
   inset: 8px;
-  border-color: rgba(5, 6, 8, 0.48);
-  border-radius: 3px;
-  transform: rotate(45deg);
+  border-color: rgba(244, 188, 80, 0.66);
+  border-left-color: transparent;
+  border-radius: 50%;
+  transform: rotateX(64deg) rotateZ(-28deg);
 }
 
 .brand strong {

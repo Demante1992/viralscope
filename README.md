@@ -1,4 +1,4 @@
-# ViralScope Creator Command Center
+# CommandCue Creator Command Center
 
 Local full-stack prototype with account login, Free/Pro plan gating, URL tracking, and OAuth-ready platform connection routes.
 
@@ -114,7 +114,7 @@ https://your-netlify-site-or-domain.com/api/oauth/callback/kick
 - `POST /api/ai/action` powers quick actions such as title rewrites, content plans, competitor research, and report drafts.
 - `GET /api/ai/runs` returns recent AI runs saved for the workspace.
 
-If `OPENAI_API_KEY` is configured, the backend uses OpenAI's Responses API. If it is missing or a model call fails, ViralScope safely falls back to deterministic local recommendations so the product remains usable in demos.
+If `OPENAI_API_KEY` is configured, the backend uses OpenAI's Responses API. If it is missing or a model call fails, CommandCue safely falls back to deterministic local recommendations so the product remains usable in demos.
 
 ```text
 OPENAI_API_KEY=
@@ -123,7 +123,7 @@ OPENAI_MODEL=gpt-4.1-mini
 
 ## Landing page and waitlist
 
-- `GET /landing` serves the public ViralScope marketing page.
+- `GET /landing` serves the public CommandCue marketing page.
 - `POST /api/waitlist` stores early access requests.
 - `GET /api/waitlist/stats` returns waitlist count and platform breakdown.
 
@@ -178,7 +178,7 @@ YOUTUBE_CLIENT_SECRET=
 TOKEN_ENCRYPTION_KEY=
 ```
 
-8. Redeploy the site, log into a Pro ViralScope account, and click the YouTube OAuth connection.
+8. Redeploy the site, log into a Pro CommandCue account, and click the YouTube OAuth connection.
 
 For local YouTube OAuth testing, also add this redirect URI to the same Google OAuth client:
 
@@ -222,9 +222,9 @@ META_CLIENT_SECRET=
 TOKEN_ENCRYPTION_KEY=
 ```
 
-7. Redeploy the site, log into a Pro ViralScope account, then connect Instagram or Facebook.
+7. Redeploy the site, log into a Pro CommandCue account, then connect Instagram or Facebook.
 
-The current starter flow intentionally avoids requesting `pages_show_list`, `pages_read_engagement`, `read_insights`, `instagram_basic`, and `instagram_manage_insights` during the first OAuth attempt. Those richer scopes can be added after Meta app review/advanced access is approved. If they are requested too early, Meta can show an "Invalid Scopes" error before the user returns to ViralScope.
+The current starter flow intentionally avoids requesting `pages_show_list`, `pages_read_engagement`, `read_insights`, `instagram_basic`, and `instagram_manage_insights` during the first OAuth attempt. Those richer scopes can be added after Meta app review/advanced access is approved. If they are requested too early, Meta can show an "Invalid Scopes" error before the user returns to CommandCue.
 
 For local Meta OAuth testing, also add:
 

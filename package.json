@@ -1,5 +1,5 @@
 {
-  "name": "viralscope-netlify-root",
+  "name": "commandcue-netlify-root",
   "private": true,
   "dependencies": {
     "@netlify/blobs": "^9.1.0"

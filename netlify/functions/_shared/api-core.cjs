@@ -137,7 +137,7 @@ function defaultWorkspace(user) {
     createdAt: new Date().toISOString(),
     settings: {
       timezone: "America/Chicago",
-      brandName: "ViralScope",
+      brandName: "CommandCue",
       defaultCta: "Join the waitlist in my bio",
       aiTrainingAllowed: false,
       weeklyReport: "Monday morning"
@@ -492,7 +492,7 @@ function fallbackAiResult({ mode, question, action, context }) {
   const deep = mode === "deep";
   const actionLabel = action || "channel_audit";
   return {
-    summary: `${deep ? "Deep" : "Fast"} audit: ViralScope reviewed ${views} in recent platform signals, ${clicks} from owned paths, and ${urlCount} tracked URL${urlCount === 1 ? "" : "s"}. The strongest move is to turn the best-performing topic into a tighter content cluster with a clear conversion path.${question ? ` Focus question: "${question}".` : ""}`,
+    summary: `${deep ? "Deep" : "Fast"} audit: CommandCue reviewed ${views} in recent platform signals, ${clicks} from owned paths, and ${urlCount} tracked URL${urlCount === 1 ? "" : "s"}. The strongest move is to turn the best-performing topic into a tighter content cluster with a clear conversion path.${question ? ` Focus question: "${question}".` : ""}`,
     recommendations: [
       {
         title: "Package the proven topic harder",
@@ -503,7 +503,7 @@ function fallbackAiResult({ mode, question, action, context }) {
       {
         title: "Make the URL path obvious",
         body: urlCount
-          ? "Move the highest-value tracked URL into the pinned comment, bio hub, and first description block so ViralScope can attribute more traffic."
+          ? "Move the highest-value tracked URL into the pinned comment, bio hub, and first description block so CommandCue can attribute more traffic."
           : "Add one tracked URL for the next upload so the AI can connect attention to clicks, leads, and sponsor proof."
       },
       {
@@ -1307,7 +1307,7 @@ async function generateAiResult({ mode, question, action, context }) {
     return { provider: "local", result: fallbackAiResult({ mode, question, action, context }) };
   }
   const prompt = [
-    "You are ViralScope's AI growth coach for influencers and content creators.",
+    "You are CommandCue's AI growth coach for influencers and content creators.",
     "Use the provided analytics context. Return only valid JSON with keys: summary, recommendations, calendar, report, nextActions.",
     "recommendations must be an array of 3 objects with title and body.",
     "calendar must be an array of 3 objects with day, title, platform, status.",
@@ -1523,7 +1523,7 @@ async function handleApi(req, res, url) {
     db.waitlist.unshift(entry);
     addAudit(db, null, "waitlist.created", { email, platform });
     writeDb(db);
-    sendJson(res, 201, { entry, count: db.waitlist.length, message: "You're on the ViralScope waitlist." });
+    sendJson(res, 201, { entry, count: db.waitlist.length, message: "You're on the CommandCue waitlist." });
     return;
   }
 
@@ -2004,7 +2004,7 @@ async function handleApi(req, res, url) {
       const userId = session?.user?.id || checkoutSession.metadata?.userId || checkoutSession.client_reference_id;
       const updatedUser = db.users.find((item) => item.id === userId) || session?.user;
       if (!updatedUser) {
-        sendJson(res, 404, { error: "Checkout completed, but the matching ViralScope account was not found." });
+        sendJson(res, 404, { error: "Checkout completed, but the matching CommandCue account was not found." });
         return;
       }
       const workspace = db.workspaces.find((item) => item.id === updatedUser.workspaceId);

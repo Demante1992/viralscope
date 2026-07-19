@@ -610,8 +610,8 @@ let launchStack = [
 ];
 
 const marketingLaunch = [
-  { channel: "Curiosity Below bio", priority: "Day 1", idea: "Add ViralScope as the top creator-tool link with a short promise: track every platform in one command center." },
-  { channel: "YouTube Short", priority: "Day 1", idea: "Show the before/after: scattered analytics tabs versus ViralScope's unified dashboard and AI coach." },
+  { channel: "Curiosity Below bio", priority: "Day 1", idea: "Add CommandCue as the top creator-tool link with a short promise: track every platform in one command center." },
+  { channel: "YouTube Short", priority: "Day 1", idea: "Show the before/after: scattered analytics tabs versus CommandCue's unified dashboard and AI coach." },
   { channel: "Pinned comment", priority: "Day 1", idea: "Pin a founder-style note asking creators what platform they struggle to understand most." },
   { channel: "Long-form demo", priority: "Week 1", idea: "Walk through connecting a channel, reading lift score, finding outliers, and generating a content plan." },
   { channel: "Waitlist landing page", priority: "Week 1", idea: "Collect emails by niche and platform so launch messaging can be personalized." },
@@ -737,7 +737,7 @@ const settingsItems = [
   { id: "team", icon: "+", accent: "#9b7cff", title: "Team access", detail: "Invite editors, managers, sponsors, or clients with role-based permissions." },
   { id: "privacy", icon: "◎", accent: "#ff7161", title: "Data privacy", detail: "Export data, delete account, revoke tokens, and manage AI training preferences." },
   { id: "brand", icon: "B", accent: "#f4bc50", title: "Brand kit", detail: "Saved colors, logo, report templates, default CTAs, and sponsor disclosure language." },
-  { id: "memory", icon: "AI", accent: "#8ee8c7", title: "AI memory", detail: "Tell ViralScope your niche, offers, content style, competitors, and banned topics." },
+  { id: "memory", icon: "AI", accent: "#8ee8c7", title: "AI memory", detail: "Tell CommandCue your niche, offers, content style, competitors, and banned topics." },
   { id: "notifications", icon: "!", accent: "#e6c15b", title: "Notifications", detail: "Outlier alerts, weekly reports, revenue spikes, failed syncs, and deadline reminders." }
 ];
 
@@ -756,7 +756,7 @@ const panelInfo = {
   },
   "Channel and page snapshots": {
     title: "Platform-native preview",
-    body: "A quick preview of how each connected platform would appear inside ViralScope, including native stats, recent content, and connection status."
+    body: "A quick preview of how each connected platform would appear inside CommandCue, including native stats, recent content, and connection status."
   },
   "Find channels and pages across platforms": {
     title: "Creator discovery",
@@ -774,7 +774,7 @@ const panelInfo = {
     title: "AI coach",
     body: "Fast mode gives quick tactical suggestions. Deep mode reviews connected channel patterns, latest posts, competitors, and revenue paths as a Pro workflow."
   },
-  "Ask ViralScope to do the work": {
+  "Ask CommandCue to do the work": {
     title: "AI command center",
     body: "Turns a broad creator request into actions across audits, title tests, calendar planning, alerts, reports, and repurposing. This is a Pro automation layer."
   },
@@ -848,7 +848,7 @@ const panelInfo = {
   },
   "Production connection checklist": {
     title: "Production stack",
-    body: "Shows each OAuth, payment, billing, and security task that needs production implementation before ViralScope can accept real customers."
+    body: "Shows each OAuth, payment, billing, and security task that needs production implementation before CommandCue can accept real customers."
   },
   "Creator acquisition plan": {
     title: "Launch marketing",
@@ -2684,7 +2684,7 @@ function settingControls(id) {
       <div class="settings-control"><label>Danger zone</label><button class="secondary-button" type="button">Request account deletion</button></div>
     `,
     brand: `
-      <div class="settings-control"><label>Brand name</label><input value="ViralScope" /></div>
+      <div class="settings-control"><label>Brand name</label><input value="CommandCue" /></div>
       <div class="settings-control"><label>Primary color</label><input value="#2ed3b7" /></div>
       <div class="settings-control"><label>Default CTA</label><input value="Join the waitlist in my bio" /></div>
       <div class="settings-control"><label>Sponsor disclosure</label><textarea>Some links may be affiliate or sponsor links. Results vary by creator and campaign.</textarea></div>
@@ -3626,7 +3626,7 @@ async function runCoachAnalysis() {
       Reading latest posts, traffic spikes, retention risk, and revenue paths.
     </span>
   `;
-  setLiveOps("AI coach analyzing", "PulsePilot is reviewing connected signals and building the next recommendation set.", "AI analysis running");
+  setLiveOps("AI coach analyzing", "CommandCue is reviewing connected signals and building the next recommendation set.", "AI analysis running");
   addActivity("AI", `${modeLabel} started for "${question.slice(0, 48)}"`, "ai");
   if (currentUser) {
     try {
@@ -3819,7 +3819,7 @@ function handleBillingReturn() {
     refreshSession();
   }
   if (oauth === "connected") {
-    showToast(`${provider || "Platform"} connected. Metrics will sync into ViralScope.`);
+    showToast(`${provider || "Platform"} connected. Metrics will sync into CommandCue.`);
     refreshSession().then(renderAll);
   }
   if (oauth === "failed") {
@@ -3926,7 +3926,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     marketingLaunch.unshift({
       channel: "Founder launch script",
       priority: "Today",
-      idea: "Record a 35-second demo: scattered analytics, ViralScope unified dashboard, AI audit, then waitlist CTA."
+      idea: "Record a 35-second demo: scattered analytics, CommandCue unified dashboard, AI audit, then waitlist CTA."
     });
     renderLaunchCenter();
     showToast("Launch campaign generated.");
@@ -4081,7 +4081,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       { step: "Schedule next actions", result: "Waiting for calendar handoff.", status: "queued" }
     ];
     renderAgentSteps();
-    setLiveOps("AI command running", "ViralScope is turning the command into audit, strategy, asset, and schedule actions.", "AI command running");
+    setLiveOps("AI command running", "CommandCue is turning the command into audit, strategy, asset, and schedule actions.", "AI command running");
     addActivity("AI", "Command center started a multi-step workflow", "ai");
     await new Promise((resolve) => window.setTimeout(resolve, 900));
     agentSteps = [
@@ -4194,7 +4194,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       source: "Cross-platform pulse",
       topic: "Creators want one dashboard for traffic and money",
       sentiment: "+52%",
-      action: "Position ViralScope as the creator command center in launch content."
+      action: "Position CommandCue as the creator command center in launch content."
     });
     renderListening();
     showToast("Social listening scan updated.");
