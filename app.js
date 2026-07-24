@@ -1688,8 +1688,8 @@ async function refreshSession() {
   }
 }
 
-async function ensureCurrentSession({ showLogin = true, message = "Log in to continue." } = {}) {
-  if (currentUser) return true;
+async function ensureCurrentSession({ showLogin = true, message = "Log in to continue.", forceRefresh = false } = {}) {
+  if (currentUser && !forceRefresh) return true;
   if (sessionToken) {
     await refreshSession();
     if (currentUser) return true;
@@ -3483,8 +3483,9 @@ async function connectOAuth(event) {
     openUpgradeDialog();
     return;
   }
+  const startOAuth = async () => apiRequest(`/api/oauth/start/${selectedPlatform.toLowerCase()}`);
   try {
-    const data = await apiRequest(`/api/oauth/start/${selectedPlatform.toLowerCase()}`);
+    const data = await startOAuth();
     if (data.redirectUrl) {
       window.location.href = data.redirectUrl;
       return;
@@ -3506,12 +3507,38 @@ async function connectOAuth(event) {
     showToast(data.message || `${selectedPlatform} OAuth connection started.`);
     return;
   } catch (error) {
+    if (error.status === 401) {
+      const resumed = await ensureCurrentSession({ showLogin: false, forceRefresh: true });
+      if (resumed) {
+        try {
+          const data = await startOAuth();
+          if (data.redirectUrl) {
+            window.location.href = data.redirectUrl;
+            return;
+          }
+          if (data.user) currentUser = data.user;
+          updateAccountUi();
+          $("#connectDialog").close();
+          renderAll();
+          setActiveView("analytics");
+          showToast(data.message || `${selectedPlatform} OAuth connection started.`);
+          return;
+        } catch (retryError) {
+          error = retryError;
+        }
+      }
+    }
     if (error.status === 402) {
       $("#connectDialog").close();
       openUpgradeDialog();
       return;
     }
-    if (error.status === 401) openAuthDialog("login");
+    if (error.status === 401) {
+      $("#connectDialog").close();
+      openAuthDialog("login");
+      showToast("Your saved session expired. Log in once, then connect the account.");
+      return;
+    }
     if (error.data?.setupRequired) {
       renderOAuthSetupRequired(error.data);
       showToast(`${selectedPlatform} OAuth needs Netlify credentials first.`);
