@@ -19,34 +19,19 @@
 
         <nav class="nav-list">
           <button class="nav-item active" type="button" data-view="overview" data-accent="teal">
-            <span class="nav-icon" data-nav-icon="overview"></span><span>Overview</span>
+            <span class="nav-icon" data-nav-icon="overview"></span><span>Dashboard</span>
           </button>
-          <button class="nav-item" type="button" data-view="channels" data-accent="blue">
-            <span class="nav-icon" data-nav-icon="channels"></span><span>Channels</span>
+          <button class="nav-item" type="button" data-view="analytics" data-accent="blue">
+            <span class="nav-icon" data-nav-icon="analytics"></span><span>Analytics</span>
           </button>
-          <button class="nav-item" type="button" data-view="discovery" data-accent="pink">
-            <span class="nav-icon" data-nav-icon="discovery"></span><span>Discovery</span>
+          <button class="nav-item" type="button" data-view="growth" data-accent="pink">
+            <span class="nav-icon" data-nav-icon="growth"></span><span>Growth Lab</span>
           </button>
-          <button class="nav-item" type="button" data-view="campaigns" data-accent="coral">
-            <span class="nav-icon" data-nav-icon="campaigns"></span><span>Campaigns</span>
+          <button class="nav-item" type="button" data-view="monetization" data-accent="green">
+            <span class="nav-icon" data-nav-icon="monetization"></span><span>Monetization</span>
           </button>
-          <button class="nav-item" type="button" data-view="coach" data-accent="amber">
-            <span class="nav-icon" data-nav-icon="coach"></span><span>AI Coach</span>
-          </button>
-          <button class="nav-item" type="button" data-view="revenue" data-accent="green">
-            <span class="nav-icon" data-nav-icon="revenue"></span><span>Revenue</span>
-          </button>
-          <button class="nav-item" type="button" data-view="calendar" data-accent="violet">
-            <span class="nav-icon" data-nav-icon="calendar"></span><span>Calendar</span>
-          </button>
-          <button class="nav-item" type="button" data-view="audience" data-accent="mint">
-            <span class="nav-icon" data-nav-icon="audience"></span><span>Audience</span>
-          </button>
-          <button class="nav-item" type="button" data-view="alerts" data-accent="red">
-            <span class="nav-icon" data-nav-icon="alerts"></span><span>Alerts</span>
-          </button>
-          <button class="nav-item" type="button" data-view="reports" data-accent="gold">
-            <span class="nav-icon" data-nav-icon="reports"></span><span>Reports</span>
+          <button class="nav-item" type="button" data-view="operations" data-accent="violet">
+            <span class="nav-icon" data-nav-icon="operations"></span><span>Operations</span>
           </button>
           <button class="nav-item" type="button" data-view="launch" data-accent="orange">
             <span class="nav-icon" data-nav-icon="launch"></span><span>Launch</span>
@@ -74,8 +59,8 @@
       <main class="main-content">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Live creator analytics</p>
-            <h1>Traffic intelligence for every platform you publish on.</h1>
+            <p class="eyebrow">CommandCue workspace</p>
+            <h1>Today’s creator command.</h1>
           </div>
           <div class="topbar-actions">
             <label class="search-box">
@@ -91,27 +76,54 @@
 
         <section class="command-band" data-view-section="overview">
           <div class="command-copy">
-            <p class="eyebrow">Unified traffic cockpit</p>
-            <h2>Connect your channels or track any URL, then see what actually moves attention.</h2>
+            <p class="eyebrow">Dashboard command</p>
+            <h2>Start with the next signal, not every tool at once.</h2>
             <p>
-              Pull together views, likes, shares, comments, retention, click-throughs, affiliate links,
-              watch time, audience overlap, and revenue signals in one creator-first workspace.
+              Your daily cockpit now focuses on connected sources, quick metrics, live system health, and the next
+              useful action. Deep tools live in Analytics, Growth Lab, Monetization, and Operations.
             </p>
             <div class="hero-actions">
-              <button class="primary-button" type="button" id="openUrlTracker">Track a website URL</button>
-              <button class="secondary-button" type="button" id="simulateRefresh">Refresh metrics</button>
+              <button class="primary-button" type="button" id="openUrlTracker">Connect or track source</button>
+              <button class="secondary-button" type="button" id="simulateRefresh">Run sync check</button>
             </div>
           </div>
-          <div class="command-visual" aria-label="Abstract analytics command center">
+          <div class="command-visual dashboard-brief" aria-label="Workspace command brief">
             <img src="assets/analytics-command-center.png" alt="" />
+            <div class="brief-card">
+              <span class="data-pill">AI brief</span>
+              <strong id="dashboardBriefTitle">Connect a source to unlock your first command.</strong>
+              <p id="dashboardBriefBody">CommandCue will surface what changed, why it matters, and what to do next.</p>
+            </div>
             <div class="visual-stat stat-one">
               <strong id="heroViews">14.8M</strong>
-              <span>30-day views</span>
+              <span>workspace views</span>
             </div>
             <div class="visual-stat stat-two">
-              <strong>+28%</strong>
-              <span>share velocity</span>
+              <strong id="heroSources">0</strong>
+              <span>live sources</span>
             </div>
+          </div>
+        </section>
+
+        <section class="workspace-empty-state empty-state-hidden" id="workspaceEmptyState" data-view-section="overview" aria-live="polite">
+          <div>
+            <p class="eyebrow">Guided setup</p>
+            <h3>Build your real workspace in three moves</h3>
+            <p>New accounts start clean so creators are not buried under sample dashboards. Add one source and CommandCue will progressively unlock the right panels.</p>
+          </div>
+          <div class="empty-action-grid">
+            <button class="empty-action" type="button" id="emptyConnectSource">
+              <strong>Connect YouTube</strong>
+              <span>Unlock channel snapshots, uploads, and AI audit context.</span>
+            </button>
+            <button class="empty-action" type="button" id="emptyTrackUrl">
+              <strong>Track a URL</strong>
+              <span>Free source tracking for websites, funnels, and campaign links.</span>
+            </button>
+            <button class="empty-action" type="button" id="emptyOpenLaunch">
+              <strong>Launch checklist</strong>
+              <span>See OAuth, Stripe, legal, and go-live readiness in one place.</span>
+            </button>
           </div>
         </section>
 
@@ -150,7 +162,7 @@
           </article>
         </section>
 
-        <section class="live-ops-panel" data-view-section="overview alerts">
+        <section class="live-ops-panel" data-view-section="overview operations alerts">
           <div class="live-ops-header">
             <div>
               <p class="eyebrow">Live operations</p>
@@ -170,7 +182,7 @@
           </div>
         </section>
 
-        <section class="onboarding-strip" data-view-section="overview">
+        <section class="onboarding-strip" data-view-section="overview operations">
           <div>
             <p class="eyebrow">Launch checklist</p>
             <h3>Get CommandCue ready for a real creator account</h3>
@@ -180,7 +192,7 @@
         </section>
 
         <section class="workspace-grid">
-          <article class="panel chart-panel" data-view-section="overview">
+          <article class="panel chart-panel" data-view-section="overview analytics">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Performance timeline</p>
@@ -205,7 +217,7 @@
             <div class="legend" id="chartLegend"></div>
           </article>
 
-          <article class="panel os-panel" data-view-section="overview reports">
+          <article class="panel os-panel" data-view-section="overview analytics reports">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Creator OS</p>
@@ -222,7 +234,7 @@
             </div>
           </article>
 
-          <article class="panel connect-panel" data-view-section="overview channels">
+          <article class="panel connect-panel" data-view-section="overview analytics channels">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Sources</p>
@@ -233,7 +245,7 @@
             <div class="channel-list" id="channelList"></div>
           </article>
 
-          <article class="panel channel-preview-panel" data-view-section="channels">
+          <article class="panel channel-preview-panel" data-view-section="analytics channels">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Platform preview</p>
@@ -244,7 +256,7 @@
             <div class="profile-preview" id="profilePreview"></div>
           </article>
 
-          <article class="panel discovery-panel" data-view-section="discovery">
+          <article class="panel discovery-panel" data-view-section="growth discovery">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Creator discovery</p>
@@ -280,7 +292,7 @@
             <div class="discovery-results" id="discoveryResults"></div>
           </article>
 
-          <article class="panel integrations-panel" data-view-section="channels">
+          <article class="panel integrations-panel" data-view-section="analytics operations channels">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Integration hub</p>
@@ -291,7 +303,7 @@
             <div class="integration-grid" id="integrationGrid"></div>
           </article>
 
-          <article class="panel content-panel" data-view-section="overview campaigns">
+          <article class="panel content-panel" data-view-section="overview analytics campaigns">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Content intelligence</p>
@@ -311,7 +323,7 @@
             <div class="content-list" id="contentList"></div>
           </article>
 
-          <article class="panel coach-panel" data-view-section="coach">
+          <article class="panel coach-panel" data-view-section="growth coach">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">CommandCue AI</p>
@@ -357,7 +369,7 @@
             </div>
           </article>
 
-          <article class="panel command-panel" data-view-section="coach">
+          <article class="panel command-panel" data-view-section="growth coach">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">AI command center</p>
@@ -374,7 +386,7 @@
             </div>
           </article>
 
-          <article class="panel lab-panel" data-view-section="campaigns coach">
+          <article class="panel lab-panel" data-view-section="growth campaigns coach">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Growth lab</p>
@@ -385,7 +397,7 @@
             <div class="lab-grid" id="labGrid"></div>
           </article>
 
-          <article class="panel outlier-panel" data-view-section="campaigns">
+          <article class="panel outlier-panel" data-view-section="growth campaigns">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Trend radar</p>
@@ -404,7 +416,7 @@
             <div class="outlier-grid" id="outlierGrid"></div>
           </article>
 
-          <article class="panel competitor-panel" data-view-section="channels campaigns">
+          <article class="panel competitor-panel" data-view-section="analytics growth channels campaigns">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Competitive intelligence</p>
@@ -415,7 +427,7 @@
             <div class="competitor-table" id="competitorTable"></div>
           </article>
 
-          <article class="panel packaging-panel" data-view-section="campaigns">
+          <article class="panel packaging-panel" data-view-section="growth campaigns">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Packaging lab</p>
@@ -426,7 +438,7 @@
             <div class="packaging-grid" id="packagingGrid"></div>
           </article>
 
-          <article class="panel repurpose-panel" data-view-section="campaigns coach">
+          <article class="panel repurpose-panel" data-view-section="operations campaigns coach">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Repurpose studio</p>
@@ -437,7 +449,7 @@
             <div class="repurpose-grid" id="repurposeGrid"></div>
           </article>
 
-          <article class="panel optimizer-panel" data-view-section="campaigns">
+          <article class="panel optimizer-panel" data-view-section="growth campaigns">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Pre-publish optimizer</p>
@@ -448,7 +460,7 @@
             <div class="optimizer-grid" id="optimizerGrid"></div>
           </article>
 
-          <article class="panel keyword-panel" data-view-section="campaigns">
+          <article class="panel keyword-panel" data-view-section="growth campaigns">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">SEO engine</p>
@@ -462,7 +474,7 @@
             <div class="keyword-list" id="keywordList"></div>
           </article>
 
-          <article class="panel rules-panel" data-view-section="channels alerts">
+          <article class="panel rules-panel" data-view-section="operations channels alerts">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Automation</p>
@@ -473,7 +485,7 @@
             <div class="rule-list" id="ruleList"></div>
           </article>
 
-          <article class="panel collections-panel" data-view-section="campaigns coach">
+          <article class="panel collections-panel" data-view-section="growth campaigns coach">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Strategy vault</p>
@@ -484,7 +496,7 @@
             <div class="collection-list" id="collectionList"></div>
           </article>
 
-          <article class="panel revenue-panel" data-view-section="overview revenue">
+          <article class="panel revenue-panel" data-view-section="overview monetization revenue">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Revenue attribution</p>
@@ -495,7 +507,7 @@
             <div class="revenue-grid" id="revenueGrid"></div>
           </article>
 
-          <article class="panel funnel-panel" data-view-section="revenue channels">
+          <article class="panel funnel-panel" data-view-section="monetization revenue channels">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Bio funnel</p>
@@ -506,7 +518,7 @@
             <div class="funnel-grid" id="funnelGrid"></div>
           </article>
 
-          <article class="panel deal-panel" data-view-section="revenue reports">
+          <article class="panel deal-panel" data-view-section="monetization revenue reports">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Brand CRM</p>
@@ -517,7 +529,7 @@
             <div class="deal-grid" id="dealGrid"></div>
           </article>
 
-          <article class="panel calendar-panel" data-view-section="calendar campaigns">
+          <article class="panel calendar-panel" data-view-section="operations calendar campaigns">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Content calendar</p>
@@ -528,7 +540,7 @@
             <div class="calendar-grid" id="calendarGrid"></div>
           </article>
 
-          <article class="panel report-panel" data-view-section="reports">
+          <article class="panel report-panel" data-view-section="monetization reports">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Team and client mode</p>
@@ -539,7 +551,7 @@
             <div class="report-grid" id="reportGrid"></div>
           </article>
 
-          <article class="panel watchlist-panel" data-view-section="discovery">
+          <article class="panel watchlist-panel" data-view-section="growth discovery">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Creator watchlist</p>
@@ -602,7 +614,7 @@
             <div class="marketing-grid" id="marketingGrid"></div>
           </article>
 
-          <article class="panel audience-panel" data-view-section="overview audience">
+          <article class="panel audience-panel" data-view-section="analytics audience">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Audience depth</p>
@@ -632,7 +644,7 @@
             </div>
           </article>
 
-          <article class="panel quality-panel" data-view-section="audience reports">
+          <article class="panel quality-panel" data-view-section="analytics audience reports">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Audience quality</p>
@@ -643,7 +655,7 @@
             <div class="quality-grid" id="qualityGrid"></div>
           </article>
 
-          <article class="panel owned-panel" data-view-section="audience revenue">
+          <article class="panel owned-panel" data-view-section="monetization audience revenue">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Owned audience</p>
@@ -654,7 +666,7 @@
             <div class="owned-grid" id="ownedGrid"></div>
           </article>
 
-          <article class="panel url-panel" data-view-section="channels">
+          <article class="panel url-panel" data-view-section="analytics channels">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Website tracker</p>
@@ -665,7 +677,7 @@
             <div class="url-list" id="urlList"></div>
           </article>
 
-          <article class="panel alert-panel" data-view-section="overview alerts">
+          <article class="panel alert-panel" data-view-section="overview operations alerts">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Opportunity radar</p>
@@ -676,7 +688,7 @@
             <div class="alert-list" id="alertList"></div>
           </article>
 
-          <article class="panel listening-panel" data-view-section="alerts audience campaigns">
+          <article class="panel listening-panel" data-view-section="growth operations alerts audience campaigns">
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Social listening</p>

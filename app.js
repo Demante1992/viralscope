@@ -630,6 +630,10 @@ const platformIcons = {
 
 const navIcons = {
   overview: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 12 5l8 8.5"/><path d="M6.5 12v7h11v-7"/><path d="M10 19v-5h4v5"/></svg>`,
+  analytics: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 3.4-4.2 3.1 2.5L19 7"/><circle cx="10.4" cy="10.8" r="1"/><circle cx="13.5" cy="13.3" r="1"/><circle cx="19" cy="7" r="1"/></svg>`,
+  growth: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.5c5.2-.2 8.8-3.1 11-8.7"/><path d="M11.5 8h3.8v3.8"/><path d="M5 20h14"/><path d="M7 20v-3.5M12 20v-6M17 20v-9"/></svg>`,
+  monetization: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M16.5 7.5c-.8-1-2.2-1.7-4-1.7-2.3 0-4 1.1-4 2.9 0 4.2 8.2 2.1 8.2 6.4 0 1.8-1.8 3.1-4.3 3.1-2 0-3.6-.7-4.8-2"/><path d="M4 20h16"/></svg>`,
+  operations: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M14 16h5M16.5 13.5v5"/></svg>`,
   channels: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/></svg>`,
   discovery: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5"/><path d="M10.5 7.5v6M7.5 10.5h6"/></svg>`,
   campaigns: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l9-5v11l-9-5H4v-1Z"/><path d="M8 14.5 9.5 20"/><path d="M20 10.5a4 4 0 0 1 0 6"/></svg>`,
@@ -892,15 +896,15 @@ function onboardingItems() {
 function internalSearchItems() {
   const contentItems = currentUser ? liveContentRowsFromSnapshots() : topContent;
   return [
-    ...platforms.map((item) => ({ type: "Channel", title: item.name, detail: item.connected ? item.followers : "OAuth needed", view: "channels" })),
-    ...contentItems.map((item) => ({ type: "Content", title: item.title, detail: `${item.platform} · ${item.views}`, view: "campaigns" })),
-    ...urls.map((item) => ({ type: "URL", title: item.url, detail: `${item.clicks} clicks`, view: "channels" })),
-    ...alerts.map((item) => ({ type: "Alert", title: item.title, detail: item.body, view: "alerts" })),
-    ...calendarItems.map((item) => ({ type: "Calendar", title: item.title, detail: `${item.day} · ${item.platform}`, view: "calendar" })),
-    ...reports.map((item) => ({ type: "Report", title: item.name, detail: item.audience, view: "reports" })),
+    ...platforms.map((item) => ({ type: "Channel", title: item.name, detail: item.connected ? item.followers : "OAuth needed", view: "analytics" })),
+    ...contentItems.map((item) => ({ type: "Content", title: item.title, detail: `${item.platform} · ${item.views}`, view: "analytics" })),
+    ...urls.map((item) => ({ type: "URL", title: item.url, detail: `${item.clicks} clicks`, view: "analytics" })),
+    ...alerts.map((item) => ({ type: "Alert", title: item.title, detail: item.body, view: "operations" })),
+    ...calendarItems.map((item) => ({ type: "Calendar", title: item.title, detail: `${item.day} · ${item.platform}`, view: "operations" })),
+    ...reports.map((item) => ({ type: "Report", title: item.name, detail: item.audience, view: "monetization" })),
     ...launchReadiness.map((item) => ({ type: "Launch", title: item.area, detail: item.detail, view: "launch" })),
     ...launchStack.map((item) => ({ type: "Launch", title: item.title, detail: item.action, view: "launch" })),
-    ...collections.map((item) => ({ type: "Collection", title: item.name, detail: item.detail, view: "coach" })),
+    ...collections.map((item) => ({ type: "Collection", title: item.name, detail: item.detail, view: "growth" })),
     ...settingsItems.map((item) => ({ type: "Setting", title: item.title, detail: item.detail, view: "settings" }))
   ];
 }
@@ -1153,6 +1157,45 @@ function applyEmptyMetricState() {
   setMetricText("engagements", "0");
   setMetricText("siteClicks", urls.length ? "0" : "0");
   setMetricText("revenue", "$0");
+}
+
+function workspaceHasSourceData() {
+  return connectedPlatformSignals().length > 0 || urls.length > 0 || Boolean(metricsSummary?.latest?.length);
+}
+
+function renderDashboardBrief() {
+  const signals = connectedPlatformSignals();
+  const primary = primaryPlatformSignal();
+  const sourceCount = signals.length;
+  setMetricText("heroSources", String(sourceCount));
+
+  const title = $("#dashboardBriefTitle");
+  const body = $("#dashboardBriefBody");
+  if (!title || !body) return;
+
+  if (!currentUser) {
+    title.textContent = "Preview the command center, then create a workspace.";
+    body.textContent = "Sample metrics show the full product shape. Real accounts start clean and unlock tools as sources are connected.";
+    return;
+  }
+
+  if (!sourceCount) {
+    title.textContent = "Connect a source to unlock your first command.";
+    body.textContent = "Start with YouTube OAuth or a tracked URL. CommandCue will then focus the dashboard around your real data.";
+    return;
+  }
+
+  const latestTitle = primary?.latestContent?.[0]?.title;
+  title.textContent = `${primary.platform} is ready for today’s brief.`;
+  body.textContent = latestTitle
+    ? `Latest pull: ${latestTitle}. Review Analytics for performance and Growth Lab for next actions.`
+    : `${sourceCount} source${sourceCount === 1 ? "" : "s"} connected. Run sync checks to enrich metrics, thumbnails, and recommendations.`;
+}
+
+function renderWorkspaceEmptyState() {
+  const node = $("#workspaceEmptyState");
+  if (!node) return;
+  node.classList.toggle("empty-state-hidden", !currentUser || workspaceHasSourceData());
 }
 
 function connectedPlatformSignals() {
@@ -2532,7 +2575,7 @@ function renderGlobalSearch() {
         `
       )
       .join("") || `
-        <button class="search-result" type="button" data-search-view="discovery">
+        <button class="search-result" type="button" data-search-view="growth">
           <strong>Search creator discovery for "${query}"</strong>
           <small>No internal matches. Open cross-platform discovery.</small>
         </button>
@@ -2542,7 +2585,7 @@ function renderGlobalSearch() {
   document.querySelectorAll("[data-search-view]").forEach((button) => {
     button.addEventListener("click", () => {
       const view = button.dataset.searchView;
-      if (view === "discovery") {
+      if (view === "growth") {
         $("#discoveryQuery").value = query;
         renderDiscovery();
       }
@@ -3459,7 +3502,7 @@ async function connectOAuth(event) {
     );
     $("#connectDialog").close();
     renderAll();
-    setActiveView("channels");
+    setActiveView("analytics");
     showToast(data.message || `${selectedPlatform} OAuth connection started.`);
     return;
   } catch (error) {
@@ -3492,7 +3535,7 @@ function connectOAuthDemoFallback() {
     );
     $("#connectDialog").close();
     renderAll();
-    setActiveView("channels");
+    setActiveView("analytics");
     showToast(`${selectedPlatform} OAuth connection simulated.`);
     return;
   }
@@ -3820,6 +3863,8 @@ function renderAll() {
   renderPlatformGrid();
   renderOAuthPreview();
   renderPanelInfoTips();
+  renderDashboardBrief();
+  renderWorkspaceEmptyState();
   animateTrafficChart();
   drawAudienceChart();
 }
@@ -3955,6 +4000,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("#openConnectSmall").addEventListener("click", openConnectDialog);
   $("#openUrlTracker").addEventListener("click", openConnectDialog);
   $("#addUrlInline").addEventListener("click", openConnectDialog);
+  $("#emptyConnectSource")?.addEventListener("click", openConnectDialog);
+  $("#emptyTrackUrl")?.addEventListener("click", openConnectDialog);
+  $("#emptyOpenLaunch")?.addEventListener("click", () => setActiveView("launch"));
   $("#saveConnection").addEventListener("click", saveConnection);
   $("#connectOAuth").addEventListener("click", connectOAuth);
   $("#accountButton").addEventListener("click", async () => {
