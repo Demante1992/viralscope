@@ -1689,7 +1689,7 @@ async function refreshSession() {
 }
 
 async function ensureCurrentSession({ showLogin = true, message = "Log in to continue.", forceRefresh = false } = {}) {
-  if (currentUser && !forceRefresh) return true;
+  if (currentUser && sessionToken && !forceRefresh) return true;
   if (sessionToken) {
     await refreshSession();
     if (currentUser && sessionToken) return true;
@@ -3477,7 +3477,7 @@ async function saveConnection(event) {
 
 async function connectOAuth(event) {
   event.preventDefault();
-  if (!(await ensureCurrentSession({ showLogin: false }))) {
+  if (!(await ensureCurrentSession({ showLogin: false, forceRefresh: true }))) {
     $("#connectDialog").close();
     openAuthDialog("login");
     showToast("Log in to connect accounts.");
