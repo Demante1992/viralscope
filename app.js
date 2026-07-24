@@ -1692,7 +1692,7 @@ async function ensureCurrentSession({ showLogin = true, message = "Log in to con
   if (currentUser && !forceRefresh) return true;
   if (sessionToken) {
     await refreshSession();
-    if (currentUser) return true;
+    if (currentUser && sessionToken) return true;
   }
   const rememberedEmail = window.localStorage.getItem("viralscopeLastEmail") || loadSessionSnapshot()?.user?.email || "";
   if (rememberedEmail) {
