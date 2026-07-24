@@ -1919,6 +1919,11 @@ function compactDisplayNumber(value) {
 function openAuthDialog(mode = "login") {
   authMode = mode;
   $("#authTitle").textContent = mode === "signup" ? "Create account" : mode === "recover" ? "Recover account" : "Log in";
+  $("#authHelper").textContent = mode === "signup"
+    ? "Create or restore the server-side prototype account for this email."
+    : mode === "recover"
+      ? "Set a new password for an account that still exists in the server store."
+      : "Use your creator workspace email and password.";
   $("#toggleAuthMode").textContent = mode === "signup" || mode === "recover" ? "Back to log in" : "Create account";
   document.querySelector(".auth-name-field").classList.toggle("is-hidden", mode !== "signup");
   $("#recoverAuthMode").classList.toggle("is-hidden", mode === "recover");
@@ -3621,9 +3626,12 @@ async function submitAuth(event) {
     }
     if (authMode === "login" && (error.status === 401 || error.status === 404)) {
       openAuthDialog(error.status === 401 ? "recover" : "signup");
+      if (error.status === 404) {
+        $("#authHelper").textContent = "The saved browser session existed, but this deployed prototype server does not currently have that account. Create it again with this email to rebuild the server account.";
+      }
       showToast(error.status === 401
         ? "Password mismatch. Use Recover account to set a new password."
-        : "No account found. Create one with this email to start.");
+        : "Server account not found. Create it again with this email to continue.");
       return;
     }
     showToast(error.message);
